@@ -1,20 +1,48 @@
 <p align="center">
-  <!-- Release -->
-  <img alt="Release" src="https://img.shields.io/github/v/release/OneMakerShow/round-carplay?label=release">
-  <!-- Version -->
-  <img alt="Version" src="https://img.shields.io/github/package-json/v/OneMakerShow/round-carplay?label=version">
-  <!-- Build Main -->
-  <img alt="Build Main" src="https://img.shields.io/github/actions/workflow/status/OneMakerShow/round-carplay/build.yml?branch=main&label=build%20main&style=flat">
-  <!-- Typecheck Main -->
-  <img alt="Typecheck Main" src="https://img.shields.io/github/actions/workflow/status/OneMakerShow/round-carplay/typecheck.yml?branch=main&label=typecheck%20main&style=flat">
-  <!-- Build Dev -->
-  <img alt="Build Dev" src="https://img.shields.io/github/actions/workflow/status/OneMakerShow/round-carplay/build.yml?branch=dev&label=build%20dev&style=flat">
-  <!-- Typecheck Dev -->
-  <img alt="Typecheck Dev" src="https://img.shields.io/github/actions/workflow/status/OneMakerShow/round-carplay/typecheck.yml?branch=dev&label=typecheck%20dev&style=flat">
-  <!-- License -->
   <img alt="License" src="https://img.shields.io/github/license/OneMakerShow/round-carplay">
 </p>
 
+# Round CarPlay — BMW R75/6 Fork
+
+> **This is a fork of [OneMakerShow/round-carplay](https://github.com/OneMakerShow/round-carplay), customized for installation on a vintage BMW R75/6 motorcycle with no OBD port.**
+>
+> All credit for the base CarPlay implementation goes to the original authors. This fork adds a sensor overlay UI and Pi-side hardware integration for standalone motorcycle use.
+
+---
+
+## What This Fork Adds
+
+The original project displays CarPlay on a round screen with OBD data in the surrounding arcs. Since the BMW R75/6 is a 1970s air-cooled boxer twin with no electronics whatsoever, this fork replaces the OBD layer with data from discrete sensors wired directly to the Raspberry Pi.
+
+### Instrument Overlay Layout
+
+CarPlay runs in a centered 565×565px square (the largest square inscribed in an 800px circle). The four arc segments around it show:
+
+| Position | Display |
+|---|---|
+| Top | GPS speed (mph), compass heading, ambient temperature |
+| Bottom | Inclinometer — lean angle needle with tick marks, pitch angle, altitude, G-force bubble plot |
+| Left | Cylinder head temperature — left jug (bar gauge, color-coded) |
+| Right | Cylinder head temperature — right jug (bar gauge, color-coded) |
+
+### Hardware
+
+All sensors connect to the Raspberry Pi GPIO. No OBD adapter or CAN bus required.
+
+| Sensor | Part | Interface | Notes |
+|---|---|---|---|
+| GPS (speed, heading, altitude) | Adafruit Ultimate GPS with USB | USB | 10Hz update rate, plug-and-play |
+| External GPS antenna | Adafruit active antenna + uFL→SMA cable | — | Better sky view when mounted under fairing |
+| Lean angle + G-force + pitch | Adafruit BNO055 9-DOF IMU | I2C (pins 3, 5) | Built-in sensor fusion, outputs absolute orientation |
+| Ambient temperature | DS18B20 waterproof probe | 1-Wire (pin 7) | Stainless steel probe, includes pull-up resistor |
+| Cylinder head temp ×2 | K-type thermocouple spark plug gaskets (14mm) | — | Clamp under spark plug, one per cylinder |
+| CHT amplifiers ×2 | MAX31855 breakout boards | SPI | One per thermocouple |
+
+### Spark Plug Size
+
+The R75/6 uses **14mm** spark plugs — the thermocouple gasket adapters listed above are the correct fit.
+
+---
 
 # Round Carplay
 

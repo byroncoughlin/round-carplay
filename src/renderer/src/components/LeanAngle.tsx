@@ -152,32 +152,32 @@ export default function LeanAngle() {
 
         {/* ── TEXT READOUTS (lower ground area) ── */}
         {/* Subtle dark backing for legibility */}
-        <rect x={0} y={68} width={W} height={H - 68} fill="rgba(0,0,0,0.25)" />
+        <rect x={0} y={66} width={W} height={H - 66} fill="rgba(0,0,0,0.25)" />
 
         {/* ALT */}
-        <text x={CX - 100} y={78} textAnchor="middle"
+        <text x={CX - 100} y={76} textAnchor="middle"
           fill="#666" fontSize={10} fontFamily="sans-serif" letterSpacing={1}>ALT</text>
-        <text x={CX - 100} y={96} textAnchor="middle"
+        <text x={CX - 100} y={94} textAnchor="middle"
           fill={altM !== null ? '#ddd' : '#444'} fontSize={20}
           fontWeight="bold" fontFamily="sans-serif">{altFt}</text>
 
         {/* Lean + pitch center */}
-        <text x={CX} y={80} textAnchor="middle"
+        <text x={CX} y={78} textAnchor="middle"
           fill={hasData ? 'white' : '#444'} fontSize={18}
           fontWeight="bold" fontFamily="sans-serif">
           {hasData ? (absLean > 0 ? `${absLean}° ${side}` : '0°') : '--'}
         </text>
         {pitch !== null && absPitch > 0 && (
-          <text x={CX} y={97} textAnchor="middle"
+          <text x={CX} y={95} textAnchor="middle"
             fill="rgba(255,200,80,0.85)" fontSize={11} fontFamily="sans-serif">
             {pitchDir}{absPitch}°
           </text>
         )}
 
         {/* G */}
-        <text x={CX + 100} y={78} textAnchor="middle"
+        <text x={CX + 100} y={76} textAnchor="middle"
           fill="#666" fontSize={10} fontFamily="sans-serif" letterSpacing={1}>G</text>
-        <text x={CX + 100} y={96} textAnchor="middle"
+        <text x={CX + 100} y={94} textAnchor="middle"
           fill={gx !== null ? gColor : '#444'} fontSize={20}
           fontWeight="bold" fontFamily="sans-serif">{g}</text>
 

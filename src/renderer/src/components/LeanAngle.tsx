@@ -1,50 +1,66 @@
 import { useCarplayStore } from '../store/store'
 
-const W        = 565
-const H        = 117
-const CX       = W / 2
-const HORIZON  = H / 2      // horizon at vertical center
+const W           = 565
+const H           = 117
+const CX          = W / 2
+const PITCH_SCALE = 2.5      // px per degree of pitch
+const ROLL_R      = 50       // radius of roll arc from top-center
+const REF_Y       = H / 2   // fixed aircraft reference at vertical center
 
-// Horizontal bar geometry
-const BAR_Y    = 38
-const BAR_LEFT = 58
-const BAR_RIGHT= 507
-const MAX_LEAN = 45
-const PPD      = (BAR_RIGHT - BAR_LEFT) / (MAX_LEAN * 2)
+const SKY    = '#1e3d5c'
+const GROUND = '#5c3412'
+const REF    = '#ffd700'     // classic aviation gold
 
-const TICKS = [10, 20, 30, 40]
-const SKY    = '#0a1828'
-const GROUND = '#291a0c'
+function d2r(deg: number) { return (deg * Math.PI) / 180 }
 
-function leanToX(deg: number) {
-  return CX + Math.max(-MAX_LEAN, Math.min(MAX_LEAN, deg)) * PPD
+// Arc path centered on (CX, 0) — the top center
+function rollArcPath(r: number, fromDeg: number, toDeg: number) {
+  const pts: string[] = []
+  for (let a = fromDeg; a <= toDeg; a += 2) {
+    const x = CX + r * Math.sin(d2r(a))
+    const y = r * (1 - Math.cos(d2r(a)))
+    pts.push(`${a === fromDeg ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`)
+  }
+  return pts.join(' ')
 }
 
-function zoneColor(deg: number): string {
-  const abs = Math.abs(deg)
-  if (abs < 15) return '#61dafb'
-  if (abs < 30) return '#ffca28'
-  return '#ef5350'
-}
+const ROLL_TICKS = [10, 20, 30, 45]
 
 export default function LeanAngle() {
-  const leanAngle  = useCarplayStore((s) => s.leanAngle)
-  const pitchAngle = useCarplayStore((s) => s.pitchAngle)
+  const lean  = useCarplayStore(s => s.leanAngle)
+  const pitch = useCarplayStore(s => s.pitchAngle)
+  const altM  = useCarplayStore(s => s.altitude)
+  const gx    = useCarplayStore(s => s.gForceX)
+  const gy    = useCarplayStore(s => s.gForceY)
 
-  const lean    = leanAngle ?? 0
-  const hasData = leanAngle !== null
-  const absLean = Math.abs(Math.round(lean))
-  const side    = lean > 0.5 ? 'R' : lean < -0.5 ? 'L' : ''
+  const leanVal  = lean  ?? 0
+  const pitchVal = pitch ?? 0
+  const hasData  = lean !== null
 
-  const absPitch = pitchAngle !== null ? Math.abs(Math.round(pitchAngle)) : null
-  const pitchDir = pitchAngle !== null
-    ? (pitchAngle > 0.5 ? '▲' : pitchAngle < -0.5 ? '▼' : '') : null
+  const absLean  = Math.abs(Math.round(leanVal))
+  const side     = leanVal > 0.5 ? 'R' : leanVal < -0.5 ? 'L' : ''
+  const absPitch = Math.abs(Math.round(pitchVal))
+  const pitchDir = pitchVal > 0.5 ? '▲' : pitchVal < -0.5 ? '▼' : ''
 
-  const ptrX  = leanToX(lean)
-  const color = hasData ? zoneColor(lean) : '#444'
+  const altFt = altM !== null ? Math.round(altM * 3.28084).toLocaleString() : '--'
+  const g     = gx !== null && gy !== null
+    ? Math.sqrt(gx ** 2 + gy ** 2).toFixed(1) : '--'
+  const gNum  = parseFloat(g)
+  const gColor = isNaN(gNum) ? '#444'
+    : gNum < 0.3 ? '#61dafb' : gNum < 0.7 ? '#66bb6a' : gNum < 1.1 ? '#ffca28' : '#ef5350'
 
-  // Background rotates around center of strip — makes motion obvious even at 0°
-  const rot = `rotate(${lean}, ${CX}, ${HORIZON})`
+  // Horizon position: drops when nose up (pitch > 0)
+  const horizonY = REF_Y + pitchVal * PITCH_SCALE
+
+  // Rotation around the (possibly pitch-shifted) horizon center
+  const rot = `rotate(${leanVal}, ${CX}, ${horizonY})`
+
+  // Pitch ladder lines (in rotating frame, relative to horizonY)
+  const pitchLines = [-15, -10, -5, 5, 10, 15].map(p => ({
+    y:     horizonY - p * PITCH_SCALE,
+    len:   Math.abs(p) % 10 === 0 ? 90 : 55,
+    label: Math.abs(p) % 10 === 0 ? Math.abs(p) : null,
+  }))
 
   return (
     <div style={{ width: '100%', height: '100%' }}>
@@ -56,135 +72,116 @@ export default function LeanAngle() {
         preserveAspectRatio="xMidYMid slice"
       >
         <defs>
-          <clipPath id="lean-bg-clip">
+          <clipPath id="ai-clip">
             <rect x={0} y={0} width={W} height={H} />
           </clipPath>
         </defs>
 
-        {/* Tilting sky / ground background */}
-        <g clipPath="url(#lean-bg-clip)">
-          <rect x={-W} y={-3 * H} width={3 * W} height={3 * H} fill={SKY} transform={rot} />
-          <rect x={-W} y={HORIZON} width={3 * W} height={3 * H} fill={GROUND} transform={rot} />
-          {/* Horizon line — tilts with lean */}
-          <line
-            x1={-W} y1={HORIZON} x2={3 * W} y2={HORIZON}
-            stroke="rgba(255,255,255,0.35)" strokeWidth={1.5}
-            transform={rot}
-          />
+        {/* ── ROTATING BACKGROUND ── */}
+        <g clipPath="url(#ai-clip)">
+          <g transform={rot}>
+            {/* Sky */}
+            <rect x={-W} y={-3 * H} width={3 * W} height={3 * H + horizonY} fill={SKY} />
+            {/* Ground */}
+            <rect x={-W} y={horizonY} width={3 * W} height={3 * H} fill={GROUND} />
+            {/* Horizon line */}
+            <line x1={-W} y1={horizonY} x2={3 * W} y2={horizonY}
+              stroke="white" strokeWidth={2} opacity={0.85} />
+            {/* Pitch ladder */}
+            {pitchLines.map(({ y, len, label }) => (
+              <g key={y}>
+                <line x1={CX - len / 2} y1={y} x2={CX + len / 2} y2={y}
+                  stroke="white" strokeWidth={1} opacity={0.5} />
+                {label && (
+                  <>
+                    <text x={CX - len / 2 - 5} y={y + 3.5}
+                      textAnchor="end" fill="white" fontSize={8}
+                      fontFamily="sans-serif" opacity={0.55}>{label}</text>
+                    <text x={CX + len / 2 + 5} y={y + 3.5}
+                      textAnchor="start" fill="white" fontSize={8}
+                      fontFamily="sans-serif" opacity={0.55}>{label}</text>
+                  </>
+                )}
+              </g>
+            ))}
+          </g>
         </g>
 
-        {/* Static bar */}
-        <line
-          x1={BAR_LEFT} y1={BAR_Y} x2={BAR_RIGHT} y2={BAR_Y}
-          stroke="rgba(255,255,255,0.22)" strokeWidth={2} strokeLinecap="round"
-        />
+        {/* ── FIXED AIRCRAFT REFERENCE ── */}
+        {/* Left wing */}
+        <line x1={CX - 55} y1={REF_Y} x2={CX - 12} y2={REF_Y}
+          stroke={REF} strokeWidth={3} strokeLinecap="round" />
+        <line x1={CX - 55} y1={REF_Y} x2={CX - 55} y2={REF_Y + 7}
+          stroke={REF} strokeWidth={3} strokeLinecap="round" />
+        {/* Right wing */}
+        <line x1={CX + 12} y1={REF_Y} x2={CX + 55} y2={REF_Y}
+          stroke={REF} strokeWidth={3} strokeLinecap="round" />
+        <line x1={CX + 55} y1={REF_Y} x2={CX + 55} y2={REF_Y + 7}
+          stroke={REF} strokeWidth={3} strokeLinecap="round" />
+        {/* Center circle + dot */}
+        <circle cx={CX} cy={REF_Y} r={5} fill="none" stroke={REF} strokeWidth={2.5} />
+        <circle cx={CX} cy={REF_Y} r={2} fill={REF} />
 
-        {/* Tick marks */}
-        {TICKS.flatMap(t => [-t, t]).map(t => {
-          const x   = leanToX(t)
-          const maj = Math.abs(t) % 20 === 0
-          const th  = maj ? 14 : 8
+        {/* ── ROLL ARC (fixed) ── */}
+        <path d={rollArcPath(ROLL_R, -50, 50)}
+          fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth={1} />
+
+        {/* Roll tick marks */}
+        {ROLL_TICKS.flatMap(a => [-a, a]).map(a => {
+          const major = Math.abs(a) >= 30
+          const outerR = ROLL_R
+          const innerR = ROLL_R - (major ? 10 : 6)
+          const ox = CX + outerR * Math.sin(d2r(a))
+          const oy = outerR * (1 - Math.cos(d2r(a)))
+          const ix = CX + innerR * Math.sin(d2r(a))
+          const iy = innerR * (1 - Math.cos(d2r(a)))
           return (
-            <g key={t}>
-              <line
-                x1={x} y1={BAR_Y - th} x2={x} y2={BAR_Y}
-                stroke={maj ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.2)'}
-                strokeWidth={maj ? 1.5 : 1}
-              />
-              {maj && (
-                <text
-                  x={x} y={BAR_Y - th - 4}
-                  textAnchor="middle"
-                  fill="rgba(255,255,255,0.35)"
-                  fontSize={9} fontFamily="sans-serif"
-                >
-                  {Math.abs(t)}
-                </text>
-              )}
-            </g>
+            <line key={a} x1={ox} y1={oy} x2={ix} y2={iy}
+              stroke="rgba(255,255,255,0.5)"
+              strokeWidth={major ? 1.5 : 1} />
           )
         })}
 
-        {/* Center tick */}
-        <line
-          x1={CX} y1={BAR_Y - 18} x2={CX} y2={BAR_Y}
-          stroke="rgba(255,255,255,0.45)" strokeWidth={1.5}
-        />
+        {/* ── ROLL POINTER (rotates around top-center with lean) ── */}
+        <g transform={`rotate(${leanVal}, ${CX}, 0)`}>
+          <polygon
+            points={`${CX},${ROLL_R + 7} ${CX - 7},${ROLL_R - 7} ${CX + 7},${ROLL_R - 7}`}
+            fill={hasData ? 'white' : 'rgba(255,255,255,0.25)'}
+          />
+        </g>
 
-        {/* Moving pointer — downward triangle on bar */}
-        <polygon
-          points={`${ptrX},${BAR_Y} ${ptrX - 8},${BAR_Y - 16} ${ptrX + 8},${BAR_Y - 16}`}
-          fill={color}
-          opacity={hasData ? 1 : 0.35}
-        />
+        {/* ── TEXT READOUTS (lower ground area) ── */}
+        {/* Subtle dark backing for legibility */}
+        <rect x={0} y={68} width={W} height={H - 68} fill="rgba(0,0,0,0.25)" />
 
-        {/* Lean readout */}
-        <text
-          x={CX} y={76}
-          textAnchor="middle" fill={hasData ? 'white' : '#333'}
-          fontSize={20} fontWeight="bold" fontFamily="sans-serif"
-        >
+        {/* ALT */}
+        <text x={CX - 100} y={78} textAnchor="middle"
+          fill="#666" fontSize={10} fontFamily="sans-serif" letterSpacing={1}>ALT</text>
+        <text x={CX - 100} y={96} textAnchor="middle"
+          fill={altM !== null ? '#ddd' : '#444'} fontSize={20}
+          fontWeight="bold" fontFamily="sans-serif">{altFt}</text>
+
+        {/* Lean + pitch center */}
+        <text x={CX} y={80} textAnchor="middle"
+          fill={hasData ? 'white' : '#444'} fontSize={18}
+          fontWeight="bold" fontFamily="sans-serif">
           {hasData ? (absLean > 0 ? `${absLean}° ${side}` : '0°') : '--'}
         </text>
-
-        {/* Pitch */}
-        {absPitch !== null && pitchDir !== null && (
-          <text
-            x={CX + 72} y={76}
-            textAnchor="middle" fill="rgba(255,140,60,0.8)"
-            fontSize={12} fontFamily="sans-serif"
-          >
-            {pitchDir}{absPitch > 0 ? `${absPitch}°` : '—'}
+        {pitch !== null && absPitch > 0 && (
+          <text x={CX} y={97} textAnchor="middle"
+            fill="rgba(255,200,80,0.85)" fontSize={11} fontFamily="sans-serif">
+            {pitchDir}{absPitch}°
           </text>
         )}
 
-        {/* ALT */}
-        <text x={CX - 130} y={64} textAnchor="middle" fill="#555"
-          fontSize={10} fontFamily="sans-serif" letterSpacing={1}>ALT</text>
-        <AltText cx={CX - 130} cy={82} />
-
         {/* G */}
-        <text x={CX + 130} y={64} textAnchor="middle" fill="#555"
-          fontSize={10} fontFamily="sans-serif" letterSpacing={1}>G</text>
-        <GText cx={CX + 130} cy={82} />
+        <text x={CX + 100} y={78} textAnchor="middle"
+          fill="#666" fontSize={10} fontFamily="sans-serif" letterSpacing={1}>G</text>
+        <text x={CX + 100} y={96} textAnchor="middle"
+          fill={gx !== null ? gColor : '#444'} fontSize={20}
+          fontWeight="bold" fontFamily="sans-serif">{g}</text>
 
       </svg>
     </div>
-  )
-}
-
-function AltText({ cx, cy }: { cx: number; cy: number }) {
-  const altM = useCarplayStore((s) => s.altitude)
-  const ft   = altM !== null ? Math.round(altM * 3.28084).toLocaleString() : '--'
-  return (
-    <text x={cx} y={cy} textAnchor="middle"
-      fill={altM !== null ? '#ccc' : '#333'}
-      fontSize={22} fontWeight="bold" fontFamily="sans-serif">
-      {ft}
-    </text>
-  )
-}
-
-function GText({ cx, cy }: { cx: number; cy: number }) {
-  const gx = useCarplayStore((s) => s.gForceX)
-  const gy = useCarplayStore((s) => s.gForceY)
-  const g  = gx !== null && gy !== null
-    ? Math.sqrt(gx ** 2 + gy ** 2).toFixed(1) : '--'
-
-  function gColor(v: string): string {
-    const n = parseFloat(v)
-    if (isNaN(n)) return '#333'
-    if (n < 0.3) return '#61dafb'
-    if (n < 0.7) return '#66bb6a'
-    if (n < 1.1) return '#ffca28'
-    return '#ef5350'
-  }
-
-  return (
-    <text x={cx} y={cy} textAnchor="middle"
-      fill={gx !== null ? gColor(g) : '#333'}
-      fontSize={22} fontWeight="bold" fontFamily="sans-serif">
-      {g}
-    </text>
   )
 }

@@ -4,7 +4,7 @@
 
 # Round CarPlay — BMW R75/6 Fork
 
-> **This is a fork of [OneMakerShow/round-carplay](https://github.com/OneMakerShow/round-carplay), customized for installation on a vintage BMW R75/6 motorcycle with no OBD port.**
+> **This is a fork of [OneMakerShow/round-carplay](https://github.com/OneMakerShow/round-carplay), customized for an R75/6.**
 >
 > All credit for the base CarPlay implementation goes to the original authors. This fork adds a sensor overlay UI and Pi-side hardware integration for standalone motorcycle use.
 
@@ -12,7 +12,7 @@
 
 ## What This Fork Adds
 
-The original project displays CarPlay on a round screen with OBD data in the surrounding arcs. Since the BMW R75/6 is a 1970s air-cooled boxer twin with no electronics whatsoever, this fork replaces the OBD layer with data from discrete sensors wired directly to the Raspberry Pi.
+The original project displays CarPlay on a round screen with OBD data in the surrounding arcs. Since the BMW R75/6 has no OBD port, this fork replaces the OBD layer with data from discrete sensors wired directly to the Raspberry Pi.
 
 ### Instrument Overlay Layout
 

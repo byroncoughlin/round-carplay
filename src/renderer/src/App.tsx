@@ -9,8 +9,6 @@ import Camera from './components/Camera';
 import SpeedDisplay from './components/SpeedDisplay';
 import LeanAngle from './components/LeanAngle';
 import CHTGauge from './components/CHTGauge';
-import AltitudeDisplay from './components/AltitudeDisplay';
-import GForcePlot from './components/GForcePlot';
 import DevPanel from './components/DevPanel';
 import { Box, Modal } from '@mui/material';
 import { useCarplayStore, useStatusStore } from "./store/store";
@@ -115,7 +113,7 @@ function App() {
             <SpeedDisplay />
           </div>
 
-          {/* Bottom arc — Lean horizon full-width, altitude + G overlaid near square boundary */}
+          {/* Bottom arc — lean bar with inline alt/G */}
           <div style={{
             position: 'absolute',
             bottom: 0,
@@ -126,14 +124,6 @@ function App() {
             zIndex: 10,
           }}>
             <LeanAngle />
-            {/* Altitude — pinned to top of strip, 20% from left (safe inside circle) */}
-            <div style={{ position: 'absolute', top: 6, left: '20%' }}>
-              <AltitudeDisplay />
-            </div>
-            {/* G-force — pinned to top of strip, 20% from right */}
-            <div style={{ position: 'absolute', top: 6, right: '20%' }}>
-              <GForcePlot />
-            </div>
           </div>
 
           {/* Left arc — CHT Left cylinder */}

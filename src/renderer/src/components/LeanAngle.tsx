@@ -1,52 +1,54 @@
 import { useCarplayStore } from '../store/store'
 
-const W        = 565
-const H        = 117
-const CX       = W / 2
-const PIVOT_Y  = H          // pivot at bottom-center
-const R_INNER  = 68         // inner tick mark radius
-const R_OUTER  = 84         // outer tick mark radius
-const R_LABEL  = 97         // degree label radius
-const R_ARC    = 76         // reference arc
-const R_NEEDLE = 80         // needle length
+const W   = 565
+const H   = 117
+const CX  = W / 2
 
-const SKY    = '#0b1a30'
-const GROUND = '#2e1c0e'
-const NEEDLE = '#ff6b35'
+// Bar geometry — sits near top of strip (where circle is widest)
+const BAR_Y    = 42
+const BAR_LEFT = 58
+const BAR_RIGHT= 507
+const BAR_W    = BAR_RIGHT - BAR_LEFT   // 449px
+const MAX_LEAN = 45                      // degrees at bar ends
+const PPD      = BAR_W / (MAX_LEAN * 2) // pixels per degree ≈ 4.99
 
-const TICK_ANGLES = [10, 20, 30, 40]
+// Tick angles to draw
+const TICKS = [10, 20, 30, 40]
 
-function degToRad(d: number) { return (d * Math.PI) / 180 }
-
-function pt(angleDeg: number, r: number) {
-  const rad = degToRad(angleDeg)
-  return { x: CX + r * Math.sin(rad), y: PIVOT_Y - r * Math.cos(rad) }
+function leanToX(deg: number) {
+  const clamped = Math.max(-MAX_LEAN, Math.min(MAX_LEAN, deg))
+  return CX + clamped * PPD
 }
 
-// Build the reference arc path
-function buildArc(r: number, fromDeg: number, toDeg: number) {
-  const pts: string[] = []
-  for (let a = fromDeg; a <= toDeg; a += 2) {
-    const p = pt(a, r)
-    pts.push(`${a === fromDeg ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
-  }
-  return pts.join(' ')
+// Color of the zone under the pointer
+function zoneColor(deg: number): string {
+  const abs = Math.abs(deg)
+  if (abs < 15) return '#61dafb'   // safe — cyan
+  if (abs < 30) return '#ffca28'   // caution — amber
+  return '#ef5350'                  // aggressive — red
 }
+
+const SKY    = '#0a1828'
+const GROUND = '#291a0c'
 
 export default function LeanAngle() {
   const leanAngle  = useCarplayStore((s) => s.leanAngle)
   const pitchAngle = useCarplayStore((s) => s.pitchAngle)
 
-  const lean     = leanAngle ?? 0
-  const hasData  = leanAngle !== null
-  const absLean  = Math.abs(Math.round(lean))
-  const leanSide = lean > 0.5 ? 'R' : lean < -0.5 ? 'L' : ''
+  const lean    = leanAngle ?? 0
+  const hasData = leanAngle !== null
+  const absLean = Math.abs(Math.round(lean))
+  const side    = lean > 0.5 ? 'R' : lean < -0.5 ? 'L' : ''
 
-  const absPitch  = pitchAngle !== null ? Math.abs(Math.round(pitchAngle)) : null
-  const pitchDir  = pitchAngle !== null ? (pitchAngle > 0.5 ? '▲' : pitchAngle < -0.5 ? '▼' : '') : null
+  const absPitch = pitchAngle !== null ? Math.abs(Math.round(pitchAngle)) : null
+  const pitchDir = pitchAngle !== null
+    ? (pitchAngle > 0.5 ? '▲' : pitchAngle < -0.5 ? '▼' : '') : null
+
+  const ptrX  = leanToX(lean)
+  const color = hasData ? zoneColor(lean) : '#444'
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%' }}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
@@ -58,83 +60,134 @@ export default function LeanAngle() {
         <rect x={0} y={0} width={W} height={H / 2} fill={SKY} />
         <rect x={0} y={H / 2} width={W} height={H / 2} fill={GROUND} />
 
-        {/* Horizon divider */}
-        <line x1={0} y1={H / 2} x2={W} y2={H / 2} stroke="rgba(255,140,60,0.4)" strokeWidth={1} />
+        {/* Subtle horizon */}
+        <line x1={0} y1={H / 2} x2={W} y2={H / 2} stroke="rgba(255,120,40,0.25)" strokeWidth={1} />
 
-        {/* Reference arc */}
-        <path d={buildArc(R_ARC, -45, 45)} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
+        {/* Bar track */}
+        <line
+          x1={BAR_LEFT} y1={BAR_Y}
+          x2={BAR_RIGHT} y2={BAR_Y}
+          stroke="rgba(255,255,255,0.18)"
+          strokeWidth={2}
+          strokeLinecap="round"
+        />
 
-        {/* Tick marks — both sides */}
-        {TICK_ANGLES.flatMap(a => [-a, a]).map(a => {
-          const inner = pt(a, R_INNER)
-          const outer = pt(a, R_OUTER)
-          const label = pt(a, R_LABEL)
-          const major = Math.abs(a) % 20 === 0
+        {/* Tick marks above bar */}
+        {TICKS.flatMap(t => [-t, t]).map(t => {
+          const x = leanToX(t)
+          const major = Math.abs(t) % 20 === 0
+          const tickH = major ? 14 : 8
           return (
-            <g key={a}>
+            <g key={t}>
               <line
-                x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y}
-                stroke={major ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.25)'}
+                x1={x} y1={BAR_Y - tickH}
+                x2={x} y2={BAR_Y}
+                stroke={major ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.2)'}
                 strokeWidth={major ? 1.5 : 1}
               />
               {major && (
                 <text
-                  x={label.x} y={label.y + 3.5}
-                  textAnchor="middle" dominantBaseline="middle"
-                  fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily="sans-serif"
+                  x={x} y={BAR_Y - tickH - 4}
+                  textAnchor="middle"
+                  fill="rgba(255,255,255,0.35)"
+                  fontSize={9}
+                  fontFamily="sans-serif"
                 >
-                  {Math.abs(a)}
+                  {Math.abs(t)}
                 </text>
               )}
             </g>
           )
         })}
 
-        {/* Center 0° tick */}
+        {/* Center tick */}
         <line
-          x1={CX} y1={PIVOT_Y - R_INNER}
-          x2={CX} y2={PIVOT_Y - R_OUTER}
-          stroke="rgba(255,255,255,0.55)" strokeWidth={1.5}
+          x1={CX} y1={BAR_Y - 18}
+          x2={CX} y2={BAR_Y}
+          stroke="rgba(255,255,255,0.45)"
+          strokeWidth={1.5}
         />
 
-        {/* Needle — rotates with lean angle */}
-        <g transform={`rotate(${lean}, ${CX}, ${PIVOT_Y})`}>
-          {/* Needle shaft */}
-          <line
-            x1={CX} y1={PIVOT_Y}
-            x2={CX} y2={PIVOT_Y - R_NEEDLE}
-            stroke={NEEDLE} strokeWidth={2.5} strokeLinecap="round"
-          />
-          {/* Needle tip dot */}
-          <circle cx={CX} cy={PIVOT_Y - R_NEEDLE} r={3.5} fill={NEEDLE} />
-        </g>
+        {/* Pointer — downward triangle, tip on bar */}
+        <polygon
+          points={`${ptrX},${BAR_Y} ${ptrX - 8},${BAR_Y - 16} ${ptrX + 8},${BAR_Y - 16}`}
+          fill={color}
+          opacity={hasData ? 1 : 0.3}
+        />
 
-        {/* Pivot cap */}
-        <circle cx={CX} cy={PIVOT_Y} r={5} fill="#222" stroke={NEEDLE} strokeWidth={1.5} />
-
-        {/* Lean angle readout — sky area, centered */}
+        {/* Lean readout — centered, below bar */}
         <text
-          x={CX} y={30}
-          textAnchor="middle" dominantBaseline="middle"
+          x={CX} y={72}
+          textAnchor="middle"
           fill={hasData ? 'white' : '#333'}
-          fontSize={hasData ? 18 : 14}
-          fontWeight="bold" fontFamily="sans-serif"
+          fontSize={20}
+          fontWeight="bold"
+          fontFamily="sans-serif"
         >
-          {hasData ? (absLean > 0 ? `${absLean}° ${leanSide}` : '0°') : '--'}
+          {hasData ? (absLean > 0 ? `${absLean}° ${side}` : '0°') : '--'}
         </text>
 
-        {/* Pitch readout — right of lean, small */}
-        {absPitch !== null && (
+        {/* Pitch — small, right of lean readout */}
+        {absPitch !== null && pitchDir !== null && (
           <text
-            x={CX + 72} y={30}
-            textAnchor="middle" dominantBaseline="middle"
-            fill="rgba(255,140,60,0.85)"
-            fontSize={11} fontFamily="sans-serif"
+            x={CX + 70} y={72}
+            textAnchor="middle"
+            fill="rgba(255,140,60,0.8)"
+            fontSize={12}
+            fontFamily="sans-serif"
           >
             {pitchDir}{absPitch > 0 ? `${absPitch}°` : '—'}
           </text>
         )}
+
+        {/* ALT — left, near center (safe zone) */}
+        <text x={CX - 130} y={66} textAnchor="middle" fill="#555" fontSize={9} fontFamily="sans-serif" letterSpacing={1}>
+          ALT
+        </text>
+        <AltText cx={CX - 130} cy={80} />
+
+        {/* G — right, near center */}
+        <text x={CX + 130} y={66} textAnchor="middle" fill="#555" fontSize={9} fontFamily="sans-serif" letterSpacing={1}>
+          G
+        </text>
+        <GText cx={CX + 130} cy={80} />
+
       </svg>
     </div>
+  )
+}
+
+// Small sub-components that read from store
+function AltText({ cx, cy }: { cx: number; cy: number }) {
+  const altM = useCarplayStore((s) => s.altitude)
+  const altFt = altM !== null ? Math.round(altM * 3.28084).toLocaleString() : '--'
+  return (
+    <text x={cx} y={cy} textAnchor="middle" fill={altM !== null ? '#aaa' : '#333'}
+      fontSize={13} fontWeight="bold" fontFamily="sans-serif">
+      {altFt}
+    </text>
+  )
+}
+
+function GText({ cx, cy }: { cx: number; cy: number }) {
+  const gx = useCarplayStore((s) => s.gForceX)
+  const gy = useCarplayStore((s) => s.gForceY)
+  const g  = gx !== null && gy !== null ? Math.sqrt(gx ** 2 + gy ** 2).toFixed(1) : '--'
+  const hasData = gx !== null
+
+  function gColor(val: string): string {
+    const n = parseFloat(val)
+    if (isNaN(n)) return '#333'
+    if (n < 0.3) return '#61dafb'
+    if (n < 0.7) return '#66bb6a'
+    if (n < 1.1) return '#ffca28'
+    return '#ef5350'
+  }
+
+  return (
+    <text x={cx} y={cy} textAnchor="middle" fill={hasData ? gColor(g) : '#333'}
+      fontSize={13} fontWeight="bold" fontFamily="sans-serif">
+      {g}
+    </text>
   )
 }

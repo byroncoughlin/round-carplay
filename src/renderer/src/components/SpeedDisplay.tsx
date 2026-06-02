@@ -21,40 +21,53 @@ export default function SpeedDisplay() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
 
-      {/* Speed — centered */}
+      {/* Speed — large, at bottom of arc where circle is widest, mph inline right */}
       <div style={{
-        position: 'absolute', top: '50%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        position: 'absolute',
+        bottom: 10,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 6,
+        whiteSpace: 'nowrap',
       }}>
-        <span style={{ fontSize: 58, fontWeight: 700, color: speed !== null ? 'white' : '#333', lineHeight: 1, letterSpacing: -2 }}>
+        <span style={{
+          fontSize: 84,
+          fontWeight: 800,
+          color: speed !== null ? 'white' : '#333',
+          lineHeight: 1,
+          letterSpacing: -3,
+        }}>
           {speed !== null ? speed : '--'}
         </span>
-        <span style={{ fontSize: 11, color: '#555', letterSpacing: 3, textTransform: 'uppercase', marginTop: 2 }}>mph</span>
+        <span style={{ fontSize: 13, color: '#555', letterSpacing: 2, textTransform: 'uppercase' }}>
+          mph
+        </span>
       </div>
 
-      {/* Heading — pinned to bottom of strip, 20% from left (safe inside circle) */}
+      {/* Heading — bottom-left, 20% from edge */}
       <div style={{
-        position: 'absolute', bottom: 6, left: '20%',
+        position: 'absolute', bottom: 14, left: '20%',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
       }}>
-        <span style={{ fontSize: 18, fontWeight: 700, color: cardinal ? 'white' : '#333', lineHeight: 1 }}>
+        <span style={{ fontSize: 20, fontWeight: 700, color: cardinal ? 'white' : '#333', lineHeight: 1 }}>
           {cardinal ?? '--'}
         </span>
-        <span style={{ fontSize: 10, color: '#666', marginTop: 1 }}>
+        <span style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
           {heading !== null ? `${Math.round(heading)}°` : ''}
         </span>
       </div>
 
-      {/* Ambient temp — pinned to bottom of strip, 20% from right */}
+      {/* Ambient temp — bottom-right, 20% from edge */}
       <div style={{
-        position: 'absolute', bottom: 6, right: '20%',
+        position: 'absolute', bottom: 14, right: '20%',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
       }}>
-        <span style={{ fontSize: 18, fontWeight: 700, color: tempF !== null ? 'white' : '#333', lineHeight: 1 }}>
+        <span style={{ fontSize: 20, fontWeight: 700, color: tempF !== null ? 'white' : '#333', lineHeight: 1 }}>
           {tempF !== null ? `${tempF}°` : '--'}
         </span>
-        <span style={{ fontSize: 10, color: '#666', marginTop: 1 }}>
+        <span style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
           {tempF !== null ? 'F' : ''}
         </span>
       </div>

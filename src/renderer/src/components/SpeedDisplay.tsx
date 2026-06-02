@@ -33,7 +33,7 @@ export default function SpeedDisplay() {
         whiteSpace: 'nowrap',
       }}>
         <span style={{
-          fontSize: 84,
+          fontSize: 72,
           fontWeight: 800,
           color: speed !== null ? 'white' : '#333',
           lineHeight: 1,

@@ -1,10 +1,10 @@
 import { useCarplayStore } from '../store/store'
 
-const SIZE   = 60
-const CX     = SIZE / 2
-const CY     = SIZE / 2
-const R      = 24
-const MAX_G  = 1.5
+const SIZE  = 70
+const CX    = SIZE / 2
+const CY    = SIZE / 2
+const R     = 28
+const MAX_G = 1.5
 
 function dotColor(g: number): string {
   if (g < 0.3) return '#61dafb'
@@ -29,24 +29,29 @@ export default function GForcePlot() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <span style={{ fontSize: 10, color: '#555', letterSpacing: 2, textTransform: 'uppercase' }}>G</span>
+      <span style={{ fontSize: 10, color: '#666', letterSpacing: 2, textTransform: 'uppercase' }}>G</span>
       <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={SIZE} height={SIZE} style={{ display: 'block', marginTop: 2 }}>
-        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#222" strokeWidth={1.5} />
-        <line x1={CX} y1={CY - R} x2={CX} y2={CY + R} stroke="#1a1a1a" strokeWidth={1} />
-        <line x1={CX - R} y1={CY} x2={CX + R} y2={CY} stroke="#1a1a1a" strokeWidth={1} />
+        {/* Outer ring — brighter */}
+        <circle cx={CX} cy={CY} r={R} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.3)" strokeWidth={1.5} />
+        {/* 0.5G inner ring */}
+        <circle cx={CX} cy={CY} r={R * (0.5 / MAX_G) * (MAX_G / 1)} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+        {/* Crosshairs */}
+        <line x1={CX} y1={CY - R} x2={CX} y2={CY + R} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+        <line x1={CX - R} y1={CY} x2={CX + R} y2={CY} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+
         {hasData ? (
           <>
-            <line x1={CX} y1={CY} x2={dotX} y2={dotY} stroke={dotColor(totalG!)} strokeWidth={1} opacity={0.4} />
-            <circle cx={dotX} cy={dotY} r={4} fill={dotColor(totalG!)} />
-            <circle cx={CX} cy={CY} r={2} fill="#333" />
+            <line x1={CX} y1={CY} x2={dotX} y2={dotY} stroke={dotColor(totalG!)} strokeWidth={1.5} opacity={0.6} />
+            <circle cx={dotX} cy={dotY} r={5} fill={dotColor(totalG!)} />
+            <circle cx={CX} cy={CY} r={2} fill="#555" />
           </>
         ) : (
-          <circle cx={CX} cy={CY} r={2} fill="#333" />
+          <circle cx={CX} cy={CY} r={2} fill="#444" />
         )}
       </svg>
-      <span style={{ fontSize: 12, fontWeight: 700, color: hasData ? 'white' : '#333', marginTop: 1 }}>
+      <span style={{ fontSize: 13, fontWeight: 700, color: hasData ? 'white' : '#444', marginTop: 1 }}>
         {totalG !== null ? totalG.toFixed(1) : '--'}
-        <span style={{ fontSize: 9, color: '#555', marginLeft: 1 }}>G</span>
+        <span style={{ fontSize: 9, color: '#666', marginLeft: 2 }}>G</span>
       </span>
     </div>
   )

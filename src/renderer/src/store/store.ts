@@ -70,6 +70,7 @@ export interface CarplayStore {
   ambientTemp: number | null // celsius
   gForceX: number | null     // G, lateral (positive = right)
   gForceY: number | null     // G, longitudinal (positive = forward)
+  pitchAngle: number | null  // degrees, positive = nose up
 }
 
 export const useCarplayStore = create<CarplayStore>((set) => ({
@@ -81,6 +82,7 @@ export const useCarplayStore = create<CarplayStore>((set) => ({
   chtLeft: null,
   gForceX: null,
   gForceY: null,
+  pitchAngle: null,
   chtRight: null,
   ambientTemp: null,
   saveSettings: (settings) => {
@@ -203,4 +205,7 @@ socket.on('ambient', (temp: number) => {
 })
 socket.on('gforce', (data: { x: number; y: number }) => {
   useCarplayStore.setState({ gForceX: data.x, gForceY: data.y })
+})
+socket.on('pitch', (angle: number) => {
+  useCarplayStore.setState({ pitchAngle: angle })
 })

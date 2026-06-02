@@ -4,10 +4,12 @@ interface CHTGaugeProps {
   side: 'L' | 'R'
 }
 
-const MIN_TEMP = 0
 const MAX_TEMP = 300
-const BAR_H    = 230
-const BAR_W    = 54
+const BAR_H   = 240
+const BAR_W   = 54
+const VW      = 110
+const VH      = 320
+const BAR_Y   = 10
 
 function tempColor(temp: number): string {
   if (temp < 80)  return '#4fc3f7'
@@ -20,79 +22,56 @@ export default function CHTGauge({ side }: CHTGaugeProps) {
   const temp = useCarplayStore((s) => (side === 'L' ? s.chtLeft : s.chtRight))
 
   const hasData = temp !== null
-  const clamped = Math.max(MIN_TEMP, Math.min(MAX_TEMP, temp ?? 0))
+  const clamped = Math.max(0, Math.min(MAX_TEMP, temp ?? 0))
   const fill    = (clamped / MAX_TEMP) * BAR_H
   const color   = hasData ? tempColor(clamped) : '#333'
 
-  const VW  = 110
-  const VH  = 320
-  const cx  = VW / 2
-  const barX = cx - BAR_W / 2
-  const barY = 42
+  // Push bar toward CarPlay square (inner edge of arc)
+  const barX   = side === 'L' ? VW - BAR_W - 4 : 4
+  const textCX = barX + BAR_W / 2
 
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <svg
         viewBox={`0 0 ${VW} ${VH}`}
         width="100%"
         height="100%"
         style={{ display: 'block' }}
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio={side === 'L' ? 'xMaxYMid meet' : 'xMinYMid meet'}
       >
-        {/* Label */}
-        <text x={cx} y={18} textAnchor="middle" fill="#555" fontSize={12}
-          fontFamily="sans-serif" letterSpacing={1}>CHT</text>
-        <text x={cx} y={36} textAnchor="middle" fill="#777" fontSize={16}
-          fontWeight="bold" fontFamily="sans-serif">{side}</text>
-
         {/* Track */}
-        <rect x={barX} y={barY} width={BAR_W} height={BAR_H}
-          fill="#141414" rx={6} />
+        <rect x={barX} y={BAR_Y} width={BAR_W} height={BAR_H} fill="#141414" rx={6} />
 
-        {/* Fill */}
+        {/* Fill from bottom */}
         {hasData && fill > 0 && (
           <rect
-            x={barX}
-            y={barY + BAR_H - fill}
-            width={BAR_W}
-            height={fill}
-            fill={color}
-            rx={6}
+            x={barX} y={BAR_Y + BAR_H - fill}
+            width={BAR_W} height={fill}
+            fill={color} rx={6}
           />
         )}
 
         {/* Tick lines at 100° and 200° */}
         {[100, 200].map(t => {
-          const y = barY + BAR_H - (t / MAX_TEMP) * BAR_H
-          return (
-            <line key={t}
-              x1={barX} y1={y} x2={barX + BAR_W} y2={y}
-              stroke="#1e1e1e" strokeWidth={1.5}
-            />
-          )
+          const y = BAR_Y + BAR_H - (t / MAX_TEMP) * BAR_H
+          return <line key={t} x1={barX} y1={y} x2={barX + BAR_W} y2={y} stroke="#1e1e1e" strokeWidth={1.5} />
         })}
 
-        {/* Temperature number */}
+        {/* Temperature */}
         <text
-          x={cx} y={barY + BAR_H + 34}
+          x={textCX} y={BAR_Y + BAR_H + 34}
           textAnchor="middle"
           fill={hasData ? color : '#333'}
-          fontSize={28}
-          fontWeight="bold"
-          fontFamily="sans-serif"
+          fontSize={28} fontWeight="bold" fontFamily="sans-serif"
         >
           {hasData ? Math.round(clamped) : '--'}
         </text>
 
         {/* Unit */}
-        <text x={cx} y={barY + BAR_H + 52} textAnchor="middle"
-          fill="#444" fontSize={12} fontFamily="sans-serif">°C</text>
+        <text x={textCX} y={BAR_Y + BAR_H + 52}
+          textAnchor="middle" fill="#444" fontSize={12} fontFamily="sans-serif">
+          °C
+        </text>
       </svg>
     </div>
   )

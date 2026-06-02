@@ -159,7 +159,7 @@ function AltText({ cx, cy }: { cx: number; cy: number }) {
   return (
     <text x={cx} y={cy} textAnchor="middle"
       fill={altM !== null ? '#ccc' : '#333'}
-      fontSize={17} fontWeight="bold" fontFamily="sans-serif">
+      fontSize={22} fontWeight="bold" fontFamily="sans-serif">
       {ft}
     </text>
   )
@@ -183,7 +183,7 @@ function GText({ cx, cy }: { cx: number; cy: number }) {
   return (
     <text x={cx} y={cy} textAnchor="middle"
       fill={gx !== null ? gColor(g) : '#333'}
-      fontSize={17} fontWeight="bold" fontFamily="sans-serif">
+      fontSize={22} fontWeight="bold" fontFamily="sans-serif">
       {g}
     </text>
   )

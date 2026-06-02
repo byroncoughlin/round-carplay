@@ -21,23 +21,23 @@ export default function SpeedDisplay() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
 
-      {/* Speed + mph — anchored to bottom of arc, centered */}
+      {/* Speed + mph — bottom 0, centered */}
       <div style={{
         position: 'absolute',
-        bottom: 4,
+        bottom: 0,
         left: '50%',
         transform: 'translateX(-50%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 0,
       }}>
         <span style={{
-          fontSize: 68,
+          fontSize: 57,
           fontWeight: 800,
           color: speed !== null ? 'white' : '#333',
           lineHeight: 1,
           letterSpacing: -2,
+          marginBottom: -9,
         }}>
           {speed !== null ? speed : '--'}
         </span>
@@ -46,17 +46,16 @@ export default function SpeedDisplay() {
           color: '#555',
           letterSpacing: 3,
           textTransform: 'uppercase',
-          marginTop: 2,
         }}>
           mph
         </span>
       </div>
 
-      {/* Heading — left side, 22% from edge */}
+      {/* Heading — left 17%, bottom 1px */}
       <div style={{
         position: 'absolute',
-        bottom: 18,
-        left: '22%',
+        bottom: 1,
+        left: '17%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -69,11 +68,11 @@ export default function SpeedDisplay() {
         </span>
       </div>
 
-      {/* Ambient temp — right side, 22% from edge */}
+      {/* Ambient temp — right 17%, bottom 1px */}
       <div style={{
         position: 'absolute',
-        bottom: 18,
-        right: '22%',
+        bottom: 1,
+        right: '17%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

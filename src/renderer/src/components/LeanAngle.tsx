@@ -141,13 +141,13 @@ export default function LeanAngle() {
         )}
 
         {/* ALT — left, near center (safe zone) */}
-        <text x={CX - 130} y={66} textAnchor="middle" fill="#555" fontSize={9} fontFamily="sans-serif" letterSpacing={1}>
+        <text x={CX - 130} y={62} textAnchor="middle" fill="#555" fontSize={10} fontFamily="sans-serif" letterSpacing={1}>
           ALT
         </text>
         <AltText cx={CX - 130} cy={80} />
 
         {/* G — right, near center */}
-        <text x={CX + 130} y={66} textAnchor="middle" fill="#555" fontSize={9} fontFamily="sans-serif" letterSpacing={1}>
+        <text x={CX + 130} y={62} textAnchor="middle" fill="#555" fontSize={10} fontFamily="sans-serif" letterSpacing={1}>
           G
         </text>
         <GText cx={CX + 130} cy={80} />
@@ -162,8 +162,8 @@ function AltText({ cx, cy }: { cx: number; cy: number }) {
   const altM = useCarplayStore((s) => s.altitude)
   const altFt = altM !== null ? Math.round(altM * 3.28084).toLocaleString() : '--'
   return (
-    <text x={cx} y={cy} textAnchor="middle" fill={altM !== null ? '#aaa' : '#333'}
-      fontSize={13} fontWeight="bold" fontFamily="sans-serif">
+    <text x={cx} y={cy} textAnchor="middle" fill={altM !== null ? '#ccc' : '#333'}
+      fontSize={17} fontWeight="bold" fontFamily="sans-serif">
       {altFt}
     </text>
   )
@@ -186,7 +186,7 @@ function GText({ cx, cy }: { cx: number; cy: number }) {
 
   return (
     <text x={cx} y={cy} textAnchor="middle" fill={hasData ? gColor(g) : '#333'}
-      fontSize={13} fontWeight="bold" fontFamily="sans-serif">
+      fontSize={17} fontWeight="bold" fontFamily="sans-serif">
       {g}
     </text>
   )

@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react'
 import { useCarplayStore } from '../store/store'
 
 const W           = 565
@@ -42,12 +43,15 @@ export default function LeanAngle() {
   const absPitch = Math.abs(Math.round(pitchVal))
   const pitchDir = pitchVal > 0.5 ? '▲' : pitchVal < -0.5 ? '▼' : ''
 
-  const altFt = altM !== null ? Math.round(altM * 3.28084).toLocaleString() : '--'
-  const g     = gx !== null && gy !== null
-    ? Math.sqrt(gx ** 2 + gy ** 2).toFixed(1) : '--'
-  const gNum  = parseFloat(g)
-  const gColor = isNaN(gNum) ? '#444'
-    : gNum < 0.3 ? '#61dafb' : gNum < 0.7 ? '#66bb6a' : gNum < 1.1 ? '#ffca28' : '#ef5350'
+  const altFt    = altM !== null ? Math.round(altM * 3.28084).toLocaleString() : '--'
+  const totalG   = gx !== null && gy !== null ? Math.sqrt(gx ** 2 + gy ** 2) : null
+  const hasG     = gx !== null
+  const maxGRef  = useRef(0)
+  useEffect(() => {
+    if (totalG !== null && totalG > maxGRef.current) maxGRef.current = totalG
+  }, [totalG])
+  const gVal   = totalG ?? 0
+  const gColor = !hasG ? '#444' : gVal < 0.5 ? '#66bb6a' : gVal < 1.0 ? '#ffca28' : '#ef5350'
 
   // Horizon position: drops when nose up (pitch > 0)
   const horizonY = REF_Y + pitchVal * PITCH_SCALE
@@ -156,8 +160,8 @@ export default function LeanAngle() {
 
         {/* ALT — aviation EFIS-style box */}
         {(() => {
-          const bx = CX - 131   // box left edge
-          const by = 67         // box top
+          const bx = 141.5      // box left edge
+          const by = 62         // box top
           const bw = 82         // box width
           const bh = 27         // box height
           const altFtNum = altM !== null ? Math.round(altM * 3.28084) : null
@@ -215,12 +219,73 @@ export default function LeanAngle() {
           </text>
         )}
 
-        {/* G */}
-        <text x={CX + 100} y={76} textAnchor="middle"
-          fill="#666" fontSize={10} fontFamily="sans-serif" letterSpacing={1}>G</text>
-        <text x={CX + 100} y={94} textAnchor="middle"
-          fill={gx !== null ? gColor : '#444'} fontSize={20}
-          fontWeight="bold" fontFamily="sans-serif">{g}</text>
+        {/* G-METER — aviation arc gauge with max-G marker */}
+        {(() => {
+          const cx      = CX + 100
+          const cy      = 80
+          const r       = 19
+          const maxScale = 2.0
+
+          const gPt = (gv: number, radius: number) => {
+            const θ = Math.PI - (Math.min(gv, maxScale) / maxScale) * Math.PI
+            return { x: cx + radius * Math.cos(θ), y: cy - radius * Math.sin(θ) }
+          }
+
+          const arcSeg = (g0: number, g1: number, color: string, w: number) => {
+            const p0 = gPt(g0, r)
+            const p1 = gPt(g1, r)
+            return <path key={`${g0}`}
+              d={`M${p0.x.toFixed(1)},${p0.y.toFixed(1)} A${r},${r} 0 0,0 ${p1.x.toFixed(1)},${p1.y.toFixed(1)}`}
+              fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" />
+          }
+
+          const needle   = gPt(gVal, r - 3)
+          const maxNeedle = gPt(maxGRef.current, r - 1)
+
+          return (
+            <g>
+              {/* Coloured zone arcs */}
+              {arcSeg(0, 0.5, 'rgba(102,187,106,0.4)', 5)}
+              {arcSeg(0.5, 1.0, 'rgba(255,202,40,0.4)', 5)}
+              {arcSeg(1.0, 2.0, 'rgba(239,83,80,0.4)', 5)}
+              {/* Thin white arc outline */}
+              <path d={`M${cx - r},${cy} A${r},${r} 0 0,0 ${cx + r},${cy}`}
+                fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={1} />
+              {/* Max G amber marker */}
+              {hasG && maxGRef.current > 0.05 && (
+                <line x1={cx} y1={cy} x2={maxNeedle.x} y2={maxNeedle.y}
+                  stroke="rgba(255,170,0,0.75)" strokeWidth={1.5} strokeLinecap="round" />
+              )}
+              {/* Current G needle */}
+              {hasG && (
+                <line x1={cx} y1={cy} x2={needle.x} y2={needle.y}
+                  stroke={gColor} strokeWidth={2.5} strokeLinecap="round" />
+              )}
+              {/* Pivot dot */}
+              <circle cx={cx} cy={cy} r={2.5} fill="rgba(255,255,255,0.55)" />
+              {/* Scale labels */}
+              <text x={cx - r - 3} y={cy + 5} textAnchor="end"
+                fill="rgba(255,255,255,0.28)" fontSize={7} fontFamily="monospace">0</text>
+              <text x={cx} y={cy - r - 3} textAnchor="middle"
+                fill="rgba(255,255,255,0.25)" fontSize={7} fontFamily="monospace">1</text>
+              <text x={cx + r + 3} y={cy + 5} textAnchor="start"
+                fill="rgba(255,255,255,0.28)" fontSize={7} fontFamily="monospace">2</text>
+              {/* Current G value */}
+              <text x={cx} y={cy + 15} textAnchor="middle"
+                fill={hasG ? gColor : '#444'} fontSize={13}
+                fontWeight="bold" fontFamily="monospace">
+                {hasG ? gVal.toFixed(1) : '--'}
+              </text>
+              {/* Max G small label */}
+              {hasG && maxGRef.current > 0.05 && (
+                <text x={cx} y={cy + 24} textAnchor="middle"
+                  fill="rgba(255,170,0,0.55)" fontSize={7} fontFamily="monospace">
+                  max {maxGRef.current.toFixed(1)}
+                </text>
+              )}
+            </g>
+          )
+        })()}
 
       </svg>
     </div>

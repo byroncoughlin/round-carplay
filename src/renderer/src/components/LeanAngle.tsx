@@ -154,12 +154,53 @@ export default function LeanAngle() {
         {/* Subtle dark backing for legibility */}
         <rect x={0} y={66} width={W} height={H - 66} fill="rgba(0,0,0,0.25)" />
 
-        {/* ALT */}
-        <text x={CX - 100} y={76} textAnchor="middle"
-          fill="#666" fontSize={10} fontFamily="sans-serif" letterSpacing={1}>ALT</text>
-        <text x={CX - 100} y={94} textAnchor="middle"
-          fill={altM !== null ? '#ddd' : '#444'} fontSize={20}
-          fontWeight="bold" fontFamily="sans-serif">{altFt}</text>
+        {/* ALT — aviation EFIS-style box */}
+        {(() => {
+          const bx = CX - 131   // box left edge
+          const by = 67         // box top
+          const bw = 82         // box width
+          const bh = 27         // box height
+          const altFtNum = altM !== null ? Math.round(altM * 3.28084) : null
+          const prev = altFtNum !== null ? (altFtNum - 100).toLocaleString() : null
+          const next = altFtNum !== null ? (altFtNum + 100).toLocaleString() : null
+          return (
+            <g>
+              {/* Box fill */}
+              <rect x={bx} y={by} width={bw} height={bh}
+                fill="rgba(0,0,0,0.55)" rx={2} />
+              {/* Subtle left tape-strip line */}
+              <line x1={bx + 9} y1={by + 3} x2={bx + 9} y2={by + bh - 3}
+                stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
+              {/* Box border */}
+              <rect x={bx} y={by} width={bw} height={bh}
+                fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth={0.75} rx={2} />
+              {/* ALT label — top left */}
+              <text x={bx + 13} y={by + 9}
+                fill="rgba(255,255,255,0.35)" fontSize={7}
+                fontFamily="monospace" letterSpacing={1}>ALT</text>
+              {/* ft unit — top right */}
+              <text x={bx + bw - 4} y={by + 9} textAnchor="end"
+                fill="rgba(255,255,255,0.22)" fontSize={7}
+                fontFamily="sans-serif">ft</text>
+              {/* Ghost — previous 100ft */}
+              {prev && (
+                <text x={bx + bw - 5} y={by + 18} textAnchor="end"
+                  fill="rgba(255,255,255,0.14)" fontSize={8}
+                  fontFamily="monospace">{prev}</text>
+              )}
+              {/* Current altitude — main readout */}
+              <text x={bx + bw - 5} y={by + bh - 4} textAnchor="end"
+                fill={altM !== null ? '#e0e0e0' : '#444'} fontSize={15}
+                fontWeight="bold" fontFamily="monospace">{altFt}</text>
+              {/* Ghost — next 100ft */}
+              {next && (
+                <text x={bx + bw - 5} y={by + bh + 7} textAnchor="end"
+                  fill="rgba(255,255,255,0.1)" fontSize={8}
+                  fontFamily="monospace">{next}</text>
+              )}
+            </g>
+          )
+        })()}
 
         {/* Lean + pitch center */}
         <text x={CX} y={78} textAnchor="middle"

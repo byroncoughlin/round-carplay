@@ -152,6 +152,51 @@ brew install sox
 
 ---
 
+## Settings Reference
+
+Access settings via the tuning icon in the nav bar. Changes to video/stream settings require hitting **Save** which resets the dongle; most other changes apply immediately.
+
+### Video & Stream
+
+| Setting | Default | What it does |
+|---|---|---|
+| **WIDTH / HEIGHT** | 800 × 480 | Resolution sent to the phone — CarPlay renders its UI at this exact size and streams it back. Should match your display resolution. |
+| **FPS** | 60 | Frames per second requested from the phone. 30 is fine for navigation, 60 is better for video. |
+| **DPI** | 140 | Dots-per-inch hint sent to the phone. Affects how CarPlay scales its UI. Higher = smaller, denser elements. |
+| **FORMAT** | 5 | Video codec format. 5 = H.264. Don't change this unless you know your adapter supports something else. |
+| **IBOX VERSION** | 2 | Protocol version for the Carlinkit hardware. 2 works for CPC200-CCPA and CPC200-CCPW. |
+| **MEDIA DELAY** | 500ms | Delay before audio starts. Helps sync audio with the video stream. If audio leads or lags video, adjust this. |
+| **PHONE WORK MODE** | 2 | How the phone connects. 2 = wireless CarPlay. |
+
+### Audio
+
+| Setting | What it does |
+|---|---|
+| **AUDIO VOLUME** | Volume for CarPlay media (music, podcasts). 0–100% slider. |
+| **NAV VOLUME** | Separate volume for turn-by-turn navigation voice. Lets you keep nav loud while music stays quieter. |
+| **DISABLE AUDIO** | Transfers audio processing back to the phone instead of handling it on the Pi. Useful for troubleshooting audio issues. |
+| **MICROPHONE: OS** | Uses a microphone connected to the Pi via the OS (USB mic, etc.) — the detected device name shows next to it. |
+| **MICROPHONE: BOX** | Uses the microphone built into the Carlinkit dongle. |
+
+### Connectivity
+
+| Setting | What it does |
+|---|---|
+| **WIFI TYPE** | Which band the dongle broadcasts for wireless CarPlay. 5GHz has lower latency and less interference — use it unless your phone struggles to connect. |
+
+### Display & UI
+
+| Setting | What it does |
+|---|---|
+| **DARK MODE** | Tells CarPlay to use its night/dark theme. Applies immediately. |
+| **KIOSK** | Hides the navigation tabs (settings, camera, etc.) for a pure CarPlay experience. Good once everything is dialled in. |
+
+### Key Bindings
+
+Physical button mappings. If you wire buttons to the Pi GPIO you can bind them to CarPlay controls: select, directional input, home, back, play/pause, next/previous track.
+
+---
+
 ## Links
 
 * **Repository & Issue Tracker:** [OneMakerShow/round-carplay](https://github.com/OneMakerShow/round-carplay)

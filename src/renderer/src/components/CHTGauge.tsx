@@ -6,7 +6,7 @@ interface CHTGaugeProps {
 
 const MAX_TEMP = 300
 const BAR_H   = 240
-const BAR_W   = 54
+const BAR_W   = 70
 const VW      = 110
 const VH      = 320
 const BAR_Y   = 10
@@ -27,7 +27,7 @@ export default function CHTGauge({ side }: CHTGaugeProps) {
   const color   = hasData ? tempColor(clamped) : '#333'
 
   // Push bar toward CarPlay square (inner edge of arc)
-  const barX   = side === 'L' ? VW - BAR_W - 4 : 4
+  const barX   = side === 'L' ? VW - BAR_W - 6 : 6
   const textCX = barX + BAR_W / 2
 
   return (

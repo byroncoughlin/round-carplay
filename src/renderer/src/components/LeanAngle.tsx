@@ -7,7 +7,7 @@ const PITCH_SCALE = 2.5      // px per degree of pitch
 const ROLL_R      = 50       // radius of roll arc from top-center
 const REF_Y       = H / 2   // fixed aircraft reference at vertical center
 
-const SKY    = '#1e3d5c'
+const SKY    = '#000000'
 const GROUND = '#5c3412'
 const REF    = '#ffd700'     // classic aviation gold
 

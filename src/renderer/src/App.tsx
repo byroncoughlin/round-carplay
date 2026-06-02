@@ -6,6 +6,12 @@ import Home from "./components/Home";
 import Nav from "./components/Nav";
 import Carplay from './components/Carplay';
 import Camera from './components/Camera';
+import SpeedDisplay from './components/SpeedDisplay';
+import LeanAngle from './components/LeanAngle';
+import CHTGauge from './components/CHTGauge';
+import AltitudeDisplay from './components/AltitudeDisplay';
+import GForcePlot from './components/GForcePlot';
+import DevPanel from './components/DevPanel';
 import { Box, Modal } from '@mui/material';
 import { useCarplayStore, useStatusStore } from "./store/store";
 import type { KeyCommand } from "./components/worker/types";
@@ -74,37 +80,103 @@ function App() {
     return () => window.carplay.usb.unlistenForEvents?.(usbHandler);
   }, [settings]);
 
+  // 565/800 = 70.625% — the largest square inscribed in the 800px circle
+  const SQUARE = '70.625%'
+  // 117/800 = 14.625% — the arc height/width outside the square
+  const ARC = '14.625%'
+
   return (
     <Router>
-      {/* Schermo intero (kiosk) */}
       <div
         className="w-screen h-screen flex items-center justify-center bg-black"
         style={{ touchAction: 'none' }}
       >
-        {/* Quadrato 800x800 centrato */}
+        {/* Outer circle — clips everything to the round display */}
         <div
-          className="relative flex items-center justify-center"
           style={{
-            width: "min(100vw, 100vh)",
-            height: "min(100vw, 100vh)",
-            borderRadius: "50%",
-            overflow: "hidden",
-            backgroundColor: "black",
-            border: "0px solid red" // DEBUG: bordo cerchio esterno
+            position: 'relative',
+            width: 'min(100vw, 100vh)',
+            height: 'min(100vw, 100vh)',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            backgroundColor: 'black',
           }}
         >
+          {/* Top arc — GPS Speed */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: SQUARE,
+            height: ARC,
+            zIndex: 10,
+          }}>
+            <SpeedDisplay />
+          </div>
 
-          {/* Quadrato 550x550 con tutta l'app centrata */}
+          {/* Bottom arc — Lean horizon full-width, altitude + G overlaid near square boundary */}
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: SQUARE,
+            height: ARC,
+            zIndex: 10,
+          }}>
+            <LeanAngle />
+            {/* Altitude — pinned to top of strip, 20% from left (safe inside circle) */}
+            <div style={{ position: 'absolute', top: 6, left: '20%' }}>
+              <AltitudeDisplay />
+            </div>
+            {/* G-force — pinned to top of strip, 20% from right */}
+            <div style={{ position: 'absolute', top: 6, right: '20%' }}>
+              <GForcePlot />
+            </div>
+          </div>
+
+          {/* Left arc — CHT Left cylinder */}
+          <div style={{
+            position: 'absolute',
+            left: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: ARC,
+            height: SQUARE,
+            zIndex: 10,
+          }}>
+            <CHTGauge side="L" />
+          </div>
+
+          {/* Right arc — CHT Right cylinder */}
+          <div style={{
+            position: 'absolute',
+            right: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: ARC,
+            height: SQUARE,
+            zIndex: 10,
+          }}>
+            <CHTGauge side="R" />
+          </div>
+
+          {/* Center square — CarPlay (565×565, perfectly centered) */}
           <div
-            className="bg-black flex items-center justify-center"
             style={{
-              width: "69%",
-              height: "69%",
-              transform: "translate(22%, 22%)",
-              border: "0px solid lime" // DEBUG: bordo quadrato interno
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: SQUARE,
+              height: SQUARE,
+              backgroundColor: 'black',
+              zIndex: 5,
             }}
           >
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center" style={{ position: 'relative' }}>
+              <DevPanel />
               <Nav receivingVideo={receivingVideo} settings={settings} />
               {settings && (
                 <Carplay
@@ -127,23 +199,6 @@ function App() {
                 </Box>
               </Modal>
             </div>
-          </div>
-
-          {/* Velocità in alto */}
-          <div
-            style={{
-              position: "absolute",
-              top: "3%",
-              left: "50%",
-              transform: "translateX(-50%)",
-              fontSize: "72px",
-              fontWeight: "bold",
-              color: "white",
-              textShadow: "0 0 10px rgba(0,0,0,0.7)",
-            }}
-          >
-            000
-            <span style={{ fontSize: "28px", marginLeft: "8px" }}>km/h</span>
           </div>
         </div>
       </div>

@@ -59,10 +59,30 @@ export interface CarplayStore {
     channels: number
     bitDepth: number
   }) => void
+
+  // Sensor data
+  gpsSpeed: number | null    // km/h
+  heading: number | null     // degrees 0-360
+  altitude: number | null    // meters
+  leanAngle: number | null   // degrees, positive = right lean
+  chtLeft: number | null     // celsius, left cylinder head
+  chtRight: number | null    // celsius, right cylinder head
+  ambientTemp: number | null // celsius
+  gForceX: number | null     // G, lateral (positive = right)
+  gForceY: number | null     // G, longitudinal (positive = forward)
 }
 
 export const useCarplayStore = create<CarplayStore>((set) => ({
   settings: null,
+  gpsSpeed: null,
+  heading: null,
+  altitude: null,
+  leanAngle: null,
+  chtLeft: null,
+  gForceX: null,
+  gForceY: null,
+  chtRight: null,
+  ambientTemp: null,
   saveSettings: (settings) => {
     set({ settings })
     socket.emit('saveSettings', settings)
@@ -167,4 +187,20 @@ socket.on('stream-status', (streaming: boolean) => {
 })
 socket.on('camera-found', (found: boolean) => {
   useStatusStore.setState({ cameraFound: found })
+})
+
+socket.on('gps', (data: { speed: number; heading: number; altitude: number }) => {
+  useCarplayStore.setState({ gpsSpeed: data.speed, heading: data.heading, altitude: data.altitude })
+})
+socket.on('lean', (angle: number) => {
+  useCarplayStore.setState({ leanAngle: angle })
+})
+socket.on('cht', (data: { left: number; right: number }) => {
+  useCarplayStore.setState({ chtLeft: data.left, chtRight: data.right })
+})
+socket.on('ambient', (temp: number) => {
+  useCarplayStore.setState({ ambientTemp: temp })
+})
+socket.on('gforce', (data: { x: number; y: number }) => {
+  useCarplayStore.setState({ gForceX: data.x, gForceY: data.y })
 })

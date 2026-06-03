@@ -152,6 +152,9 @@ function App() {
             <CHTGauge side="R" />
           </div>
 
+          {/* DevPanel — floats over bottom arc, outside center square */}
+          <DevPanel />
+
           {/* Center square — CarPlay (565×565, perfectly centered) */}
           <div
             style={{
@@ -166,7 +169,6 @@ function App() {
             }}
           >
             <div className="w-full h-full flex items-center justify-center" style={{ position: 'relative' }}>
-              <DevPanel />
               <Nav receivingVideo={receivingVideo} settings={settings} />
               {settings && (
                 <Carplay

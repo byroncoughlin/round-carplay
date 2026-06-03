@@ -90,18 +90,18 @@ export default function DevPanel() {
         onClick={() => setVisible(true)}
         style={{
           position: 'absolute',
-          bottom: 8,
+          bottom: 16,
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(0,0,0,0.5)',
-          border: '1px solid #333',
+          background: 'rgba(0,0,0,0.6)',
+          border: '1px solid #444',
           borderRadius: '50%',
-          width: 28,
-          height: 28,
-          color: '#555',
-          fontSize: 14,
+          width: 40,
+          height: 40,
+          color: '#666',
+          fontSize: 20,
           cursor: 'pointer',
-          zIndex: 100,
+          zIndex: 200,
         }}
       >
         ⚙
@@ -113,26 +113,27 @@ export default function DevPanel() {
     <div
       style={{
         position: 'absolute',
-        bottom: 10,
+        bottom: 12,
         left: '50%',
         transform: 'translateX(-50%)',
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        background: 'rgba(0,0,0,0.75)',
-        border: '1px solid #333',
-        borderRadius: 20,
-        padding: '4px 10px',
-        zIndex: 100,
+        gap: 12,
+        background: 'rgba(0,0,0,0.82)',
+        border: '1px solid #444',
+        borderRadius: 28,
+        padding: '8px 18px',
+        zIndex: 200,
         userSelect: 'none',
+        whiteSpace: 'nowrap',
       }}
     >
       <button onClick={prev} style={btnStyle}>◀</button>
-      <span style={{ color: '#aaa', fontSize: 12, minWidth: 90, textAlign: 'center' }}>
+      <span style={{ color: '#ccc', fontSize: 16, minWidth: 110, textAlign: 'center', fontWeight: 600 }}>
         {STATES[index].label}
       </span>
       <button onClick={next} style={btnStyle}>▶</button>
-      <button onClick={() => setVisible(false)} style={{ ...btnStyle, color: '#444', marginLeft: 4 }}>✕</button>
+      <button onClick={() => setVisible(false)} style={{ ...btnStyle, color: '#555', marginLeft: 6 }}>✕</button>
     </div>
   )
 }
@@ -140,8 +141,9 @@ export default function DevPanel() {
 const btnStyle: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#888',
-  fontSize: 14,
+  color: '#aaa',
+  fontSize: 22,
   cursor: 'pointer',
-  padding: '2px 4px',
+  padding: '4px 8px',
+  lineHeight: 1,
 }

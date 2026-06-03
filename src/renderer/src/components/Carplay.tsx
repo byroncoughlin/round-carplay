@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Typography } from '@mui/material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { CommandMapping } from '../../../main/carplay/messages/common'
 
@@ -411,12 +410,45 @@ const Carplay: React.FC<CarplayProps> = ({
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            alignItems: 'center'
+            alignItems: 'center',
+            gap: 14,
           }}
         >
-          <Typography>
-            {!isDongleConnected ? 'Searching For Dongle' : 'Searching For Phone'}
-          </Typography>
+          <div style={{
+            fontSize: 36,
+            fontWeight: 700,
+            color: 'rgba(255,255,255,0.82)',
+            textAlign: 'center',
+            letterSpacing: 0.5,
+            lineHeight: 1.2,
+          }}>
+            {!isDongleConnected ? 'Searching for\nDongle' : 'Searching for\niPhone'}
+          </div>
+          <div style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.28)',
+            letterSpacing: 3,
+            textTransform: 'uppercase',
+            textAlign: 'center',
+          }}>
+            {!isDongleConnected ? 'Connect Carlinkit adapter' : 'Enable CarPlay on iPhone'}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="animate-pulse"
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.22)',
+                  animationDelay: `${i * 0.18}s`,
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
       <div

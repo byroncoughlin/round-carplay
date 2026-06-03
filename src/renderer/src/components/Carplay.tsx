@@ -412,6 +412,7 @@ const Carplay: React.FC<CarplayProps> = ({
             justifyContent: 'center',
             alignItems: 'center',
             gap: 14,
+            paddingTop: '18%',
           }}
         >
           <div style={{
@@ -422,7 +423,7 @@ const Carplay: React.FC<CarplayProps> = ({
             letterSpacing: 0.5,
             lineHeight: 1.2,
           }}>
-            {!isDongleConnected ? 'Searching for\nDongle' : 'Searching for\niPhone'}
+            {!isDongleConnected ? 'Searching for\nAdapter' : 'Searching for\niPhone'}
           </div>
           <div style={{
             fontSize: 12,

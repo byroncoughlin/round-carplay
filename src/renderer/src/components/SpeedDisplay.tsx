@@ -32,7 +32,7 @@ export default function SpeedDisplay() {
         alignItems: 'center',
       }}>
         <span style={{
-          fontSize: 57,
+          fontSize: 90,
           fontWeight: 800,
           color: speed !== null ? 'white' : '#333',
           lineHeight: 1,
@@ -60,10 +60,10 @@ export default function SpeedDisplay() {
         flexDirection: 'column',
         alignItems: 'center',
       }}>
-        <span style={{ fontSize: 18, fontWeight: 700, color: cardinal ? 'white' : '#333', lineHeight: 1 }}>
+        <span style={{ fontSize: 32, fontWeight: 700, color: cardinal ? 'white' : '#333', lineHeight: 1 }}>
           {cardinal ?? '--'}
         </span>
-        <span style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
+        <span style={{ fontSize: 14, color: '#666', marginTop: 2 }}>
           {heading !== null ? `${Math.round(heading)}°` : ''}
         </span>
       </div>
@@ -77,10 +77,10 @@ export default function SpeedDisplay() {
         flexDirection: 'column',
         alignItems: 'center',
       }}>
-        <span style={{ fontSize: 18, fontWeight: 700, color: tempF !== null ? 'white' : '#333', lineHeight: 1 }}>
+        <span style={{ fontSize: 32, fontWeight: 700, color: tempF !== null ? 'white' : '#333', lineHeight: 1 }}>
           {tempF !== null ? `${tempF}°` : '--'}
         </span>
-        <span style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
+        <span style={{ fontSize: 14, color: '#666', marginTop: 2 }}>
           {tempF !== null ? 'F' : ''}
         </span>
       </div>

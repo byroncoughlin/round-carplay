@@ -5,27 +5,13 @@ const W           = 565
 const H           = 117
 const CX          = W / 2
 const PITCH_SCALE = 2.5      // px per degree of pitch
-const ROLL_R      = 50       // radius of roll arc from top-center
 const REF_Y       = H / 2   // fixed aircraft reference at vertical center
 
 const SKY    = '#000000'
 const GROUND = '#5c3412'
 const REF    = '#ffd700'     // classic aviation gold
 
-function d2r(deg: number) { return (deg * Math.PI) / 180 }
 
-// Arc path centered on (CX, 0) — the top center
-function rollArcPath(r: number, fromDeg: number, toDeg: number) {
-  const pts: string[] = []
-  for (let a = fromDeg; a <= toDeg; a += 2) {
-    const x = CX + r * Math.sin(d2r(a))
-    const y = r * (1 - Math.cos(d2r(a)))
-    pts.push(`${a === fromDeg ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`)
-  }
-  return pts.join(' ')
-}
-
-const ROLL_TICKS = [10, 20, 30, 45]
 
 export default function LeanAngle() {
   const lean  = useCarplayStore(s => s.leanAngle)
@@ -62,7 +48,7 @@ export default function LeanAngle() {
   // Pitch ladder lines (in rotating frame, relative to horizonY)
   const pitchLines = [-15, -10, -5, 5, 10, 15].map(p => ({
     y:     horizonY - p * PITCH_SCALE,
-    len:   Math.abs(p) % 10 === 0 ? 90 : 55,
+    len:   Math.abs(p) % 10 === 0 ? 120 : 70,
     label: Math.abs(p) % 10 === 0 ? Math.abs(p) : null,
   }))
 
@@ -113,46 +99,20 @@ export default function LeanAngle() {
 
         {/* ── FIXED AIRCRAFT REFERENCE ── */}
         {/* Left wing */}
-        <line x1={CX - 55} y1={REF_Y} x2={CX - 12} y2={REF_Y}
-          stroke={REF} strokeWidth={3} strokeLinecap="round" />
-        <line x1={CX - 55} y1={REF_Y} x2={CX - 55} y2={REF_Y + 7}
-          stroke={REF} strokeWidth={3} strokeLinecap="round" />
+        <line x1={CX - 72} y1={REF_Y} x2={CX - 12} y2={REF_Y}
+          stroke={REF} strokeWidth={3.5} strokeLinecap="round" />
+        <line x1={CX - 72} y1={REF_Y} x2={CX - 72} y2={REF_Y + 9}
+          stroke={REF} strokeWidth={3.5} strokeLinecap="round" />
         {/* Right wing */}
-        <line x1={CX + 12} y1={REF_Y} x2={CX + 55} y2={REF_Y}
-          stroke={REF} strokeWidth={3} strokeLinecap="round" />
-        <line x1={CX + 55} y1={REF_Y} x2={CX + 55} y2={REF_Y + 7}
-          stroke={REF} strokeWidth={3} strokeLinecap="round" />
+        <line x1={CX + 12} y1={REF_Y} x2={CX + 72} y2={REF_Y}
+          stroke={REF} strokeWidth={3.5} strokeLinecap="round" />
+        <line x1={CX + 72} y1={REF_Y} x2={CX + 72} y2={REF_Y + 9}
+          stroke={REF} strokeWidth={3.5} strokeLinecap="round" />
         {/* Center circle + dot */}
         <circle cx={CX} cy={REF_Y} r={5} fill="none" stroke={REF} strokeWidth={2.5} />
         <circle cx={CX} cy={REF_Y} r={2} fill={REF} />
 
-        {/* ── ROLL ARC (fixed) ── */}
-        <path d={rollArcPath(ROLL_R, -50, 50)}
-          fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth={1} />
-
-        {/* Roll tick marks */}
-        {ROLL_TICKS.flatMap(a => [-a, a]).map(a => {
-          const major = Math.abs(a) >= 30
-          const outerR = ROLL_R
-          const innerR = ROLL_R - (major ? 10 : 6)
-          const ox = CX + outerR * Math.sin(d2r(a))
-          const oy = outerR * (1 - Math.cos(d2r(a)))
-          const ix = CX + innerR * Math.sin(d2r(a))
-          const iy = innerR * (1 - Math.cos(d2r(a)))
-          return (
-            <line key={a} x1={ox} y1={oy} x2={ix} y2={iy}
-              stroke="rgba(255,255,255,0.5)"
-              strokeWidth={major ? 1.5 : 1} />
-          )
-        })}
-
-        {/* ── ROLL POINTER (rotates around top-center with lean) ── */}
-        <g transform={`rotate(${leanVal}, ${CX}, 0)`}>
-          <polygon
-            points={`${CX},${ROLL_R + 7} ${CX - 7},${ROLL_R - 7} ${CX + 7},${ROLL_R - 7}`}
-            fill={hasData ? 'white' : 'rgba(255,255,255,0.25)'}
-          />
-        </g>
+        {/* Roll arc and ticks removed */}
 
         {/* ── TEXT READOUTS (lower ground area) ── */}
         {/* Subtle dark backing for legibility */}
@@ -174,7 +134,7 @@ export default function LeanAngle() {
             <g>
               {/* Box fill */}
               <rect x={bx} y={by} width={bw} height={bh}
-                fill="rgba(0,0,0,0.55)" rx={2} />
+                fill="rgba(0,0,0,0.90)" rx={2} />
               {/* Subtle left tape-strip line */}
               <line x1={bx + 9} y1={by + 3} x2={bx + 9} y2={by + bh - 3}
                 stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
@@ -209,17 +169,25 @@ export default function LeanAngle() {
           )
         })()}
 
-        {/* Lean + pitch center */}
-        <text x={CX} y={78} textAnchor="middle"
-          fill={hasData ? 'white' : '#444'} fontSize={18}
+        {/* Lean center — arch shape: rounded top, bottom clipped flat by SVG viewport */}
+        <rect x={CX - 40} y={88} width={80} height={40}
+          fill="rgba(0,0,0,0.88)"
+          stroke="rgba(255,255,255,0.07)" strokeWidth={0.75}
+          rx={14} />
+        <text x={282.5} y={112} textAnchor="middle"
+          fill={hasData ? 'white' : '#444'} fontSize={24}
           fontWeight="bold" fontFamily="sans-serif">
           {hasData ? (absLean > 0 ? `${absLean}° ${side}` : '0°') : '--'}
         </text>
         {pitch !== null && absPitch > 0 && (
-          <text x={CX} y={95} textAnchor="middle"
-            fill="rgba(255,200,80,0.85)" fontSize={11} fontFamily="sans-serif">
-            {pitchDir}{absPitch}°
-          </text>
+          <>
+            <rect x={CX - 22} y={79} width={44} height={13}
+              fill="rgba(0,0,0,0.65)" rx={4} />
+            <text x={CX} y={89} textAnchor="middle"
+              fill="rgba(255,200,80,0.9)" fontSize={11} fontFamily="sans-serif">
+              {pitchDir}{absPitch}°
+            </text>
+          </>
         )}
 
         {/* G-METER — aviation arc gauge with max-G marker */}
@@ -273,15 +241,17 @@ export default function LeanAngle() {
                 fill="rgba(255,255,255,0.25)" fontSize={7} fontFamily="monospace">1</text>
               <text x={cx + r + 3} y={cy + 5} textAnchor="start"
                 fill="rgba(255,255,255,0.28)" fontSize={7} fontFamily="monospace">2</text>
-              {/* Current G value */}
-              <text x={460} y={40} textAnchor="middle"
-                fill={hasG ? gColor : '#444'} fontSize={18}
+              {/* Current G value — dark pill backing */}
+              <rect x={429} y={30} width={62} height={24}
+                fill="rgba(0,0,0,0.72)" rx={5} />
+              <text x={460} y={48} textAnchor="middle"
+                fill={hasG ? gColor : '#444'} fontSize={24}
                 fontWeight="bold" fontFamily="monospace">
                 {hasG ? gVal.toFixed(1) : '--'}
               </text>
               {/* Max G small label */}
               {hasG && maxGRef.current > 0.05 && (
-                <text x={460} y={52} textAnchor="middle"
+                <text x={460} y={62} textAnchor="middle"
                   fill="rgba(255,170,0,0.55)" fontSize={7} fontFamily="monospace">
                   max {maxGRef.current.toFixed(1)}
                 </text>

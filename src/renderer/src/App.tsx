@@ -126,10 +126,10 @@ function App() {
             <LeanAngle />
           </div>
 
-          {/* Left arc — CHT Left cylinder */}
+          {/* Left arc — CHT Left cylinder (nudged 2px toward center) */}
           <div style={{
             position: 'absolute',
-            left: 0,
+            left: 2,
             top: '50%',
             transform: 'translateY(-50%)',
             width: ARC,

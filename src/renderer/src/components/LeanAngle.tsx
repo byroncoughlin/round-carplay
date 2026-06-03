@@ -118,56 +118,19 @@ export default function LeanAngle() {
         {/* Subtle dark backing for legibility */}
         <rect x={0} y={66} width={W} height={H - 66} fill="rgba(0,0,0,0.25)" />
 
-        {/* ALT — aviation EFIS-style box, anchored to number at x=138 y=35 */}
-        {(() => {
-          // Main number anchor: x=138 (right edge), y=35 (baseline), fontSize=20
-          const numX  = 138
-          const numY  = 35
-          const bx    = 55    // box left edge
-          const by    = 10    // box top
-          const bw    = 87    // box width  (right edge at 142)
-          const bh    = 32    // box height (bottom at 42)
-          const altFtNum = altM !== null ? Math.round(altM * 3.28084) : null
-          const prev = altFtNum !== null ? (altFtNum - 100).toLocaleString() : null
-          const next = altFtNum !== null ? (altFtNum + 100).toLocaleString() : null
-          return (
-            <g>
-              {/* Box fill */}
-              <rect x={bx} y={by} width={bw} height={bh}
-                fill="rgba(0,0,0,0.90)" rx={2} />
-              {/* Subtle left tape-strip line */}
-              <line x1={bx + 9} y1={by + 3} x2={bx + 9} y2={by + bh - 3}
-                stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
-              {/* Box border */}
-              <rect x={bx} y={by} width={bw} height={bh}
-                fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth={0.75} rx={2} />
-              {/* ALT label — top left */}
-              <text x={bx + 13} y={by + 9}
-                fill="rgba(255,255,255,0.35)" fontSize={7}
-                fontFamily="monospace" letterSpacing={1}>ALT</text>
-              {/* ft unit — top right */}
-              <text x={bx + bw - 4} y={by + 9} textAnchor="end"
-                fill="rgba(255,255,255,0.22)" fontSize={7}
-                fontFamily="sans-serif">ft</text>
-              {/* Ghost — previous 100ft */}
-              {prev && (
-                <text x={numX} y={numY - 13} textAnchor="end"
-                  fill="rgba(255,255,255,0.14)" fontSize={8}
-                  fontFamily="monospace">{prev}</text>
-              )}
-              {/* Current altitude — main readout at exact anchor */}
-              <text x={numX} y={numY} textAnchor="end"
-                fill={altM !== null ? '#e0e0e0' : '#444'} fontSize={16}
-                fontWeight="bold" fontFamily="monospace">{altFt}</text>
-              {/* Ghost — next 100ft */}
-              {next && (
-                <text x={numX} y={numY + 10} textAnchor="end"
-                  fill="rgba(255,255,255,0.1)" fontSize={8}
-                  fontFamily="monospace">{next}</text>
-              )}
-            </g>
-          )
-        })()}
+        {/* ALT — simplified: label + big number + unit */}
+        <g>
+          <rect x={84} y={6} width={78} height={58} fill="rgba(0,0,0,0.72)" rx={5} />
+          <text x={123} y={22} textAnchor="middle"
+            fill="rgba(255,255,255,0.45)" fontSize={11}
+            fontFamily="monospace" letterSpacing={2}>ALT</text>
+          <text x={123} y={48} textAnchor="middle"
+            fill={altM !== null ? '#e0e0e0' : '#444'} fontSize={24}
+            fontWeight="bold" fontFamily="monospace">{altFt}</text>
+          <text x={123} y={59} textAnchor="middle"
+            fill="rgba(255,255,255,0.3)" fontSize={9}
+            fontFamily="sans-serif">ft</text>
+        </g>
 
         {/* Lean center — arch shape: rounded top, bottom clipped flat by SVG viewport */}
         <rect x={CX - 40} y={88} width={80} height={40}
@@ -190,75 +153,34 @@ export default function LeanAngle() {
           </>
         )}
 
-        {/* G-METER — aviation arc gauge with max-G marker */}
-        {(() => {
-          const cx      = 460
-          const cy      = 22
-          const r       = 19
-          const maxScale = 2.0
-
-          const gPt = (gv: number, radius: number) => {
-            const θ = Math.PI - (Math.min(gv, maxScale) / maxScale) * Math.PI
-            return { x: cx + radius * Math.cos(θ), y: cy - radius * Math.sin(θ) }
-          }
-
-          const arcSeg = (g0: number, g1: number, color: string, w: number) => {
-            const p0 = gPt(g0, r)
-            const p1 = gPt(g1, r)
-            return <path key={`${g0}`}
-              d={`M${p0.x.toFixed(1)},${p0.y.toFixed(1)} A${r},${r} 0 0,0 ${p1.x.toFixed(1)},${p1.y.toFixed(1)}`}
-              fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" />
-          }
-
-          const needle   = gPt(gVal, r - 3)
-          const maxNeedle = gPt(maxGRef.current, r - 1)
-
-          return (
+        {/* G-METER — clean numbers, no arc */}
+        <g>
+          {/* Label */}
+          <text x={460} y={14} textAnchor="middle"
+            fill="rgba(255,255,255,0.4)" fontSize={11}
+            fontFamily="monospace" letterSpacing={2}>G</text>
+          {/* Current G — large, colored */}
+          <rect x={428} y={18} width={64} height={30} fill="rgba(0,0,0,0.72)" rx={5} />
+          <text x={460} y={42} textAnchor="middle"
+            fill={hasG ? gColor : '#444'} fontSize={24}
+            fontWeight="bold" fontFamily="monospace">
+            {hasG ? gVal.toFixed(1) : '--'}
+          </text>
+          {/* MAX — label + big readable value */}
+          {hasG && maxGRef.current > 0.05 && (
             <g>
-              {/* Coloured zone arcs */}
-              {arcSeg(0, 0.5, 'rgba(102,187,106,0.4)', 5)}
-              {arcSeg(0.5, 1.0, 'rgba(255,202,40,0.4)', 5)}
-              {arcSeg(1.0, 2.0, 'rgba(239,83,80,0.4)', 5)}
-              {/* Thin white arc outline */}
-              <path d={`M${cx - r},${cy} A${r},${r} 0 0,0 ${cx + r},${cy}`}
-                fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={1} />
-              {/* Max G amber marker */}
-              {hasG && maxGRef.current > 0.05 && (
-                <line x1={cx} y1={cy} x2={maxNeedle.x} y2={maxNeedle.y}
-                  stroke="rgba(255,170,0,0.75)" strokeWidth={1.5} strokeLinecap="round" />
-              )}
-              {/* Current G needle */}
-              {hasG && (
-                <line x1={cx} y1={cy} x2={needle.x} y2={needle.y}
-                  stroke={gColor} strokeWidth={2.5} strokeLinecap="round" />
-              )}
-              {/* Pivot dot */}
-              <circle cx={cx} cy={cy} r={2.5} fill="rgba(255,255,255,0.55)" />
-              {/* Scale labels */}
-              <text x={cx - r - 3} y={cy + 5} textAnchor="end"
-                fill="rgba(255,255,255,0.28)" fontSize={7} fontFamily="monospace">0</text>
-              <text x={cx} y={cy - r - 3} textAnchor="middle"
-                fill="rgba(255,255,255,0.25)" fontSize={7} fontFamily="monospace">1</text>
-              <text x={cx + r + 3} y={cy + 5} textAnchor="start"
-                fill="rgba(255,255,255,0.28)" fontSize={7} fontFamily="monospace">2</text>
-              {/* Current G value — dark pill backing */}
-              <rect x={429} y={30} width={62} height={24}
-                fill="rgba(0,0,0,0.72)" rx={5} />
-              <text x={460} y={48} textAnchor="middle"
-                fill={hasG ? gColor : '#444'} fontSize={24}
+              <text x={460} y={58} textAnchor="middle"
+                fill="rgba(255,170,0,0.55)" fontSize={10}
+                fontFamily="monospace" letterSpacing={1}>MAX</text>
+              <rect x={432} y={61} width={56} height={26} fill="rgba(0,0,0,0.65)" rx={5} />
+              <text x={460} y={80} textAnchor="middle"
+                fill="rgba(255,170,0,0.92)" fontSize={20}
                 fontWeight="bold" fontFamily="monospace">
-                {hasG ? gVal.toFixed(1) : '--'}
+                {maxGRef.current.toFixed(1)}
               </text>
-              {/* Max G small label */}
-              {hasG && maxGRef.current > 0.05 && (
-                <text x={460} y={62} textAnchor="middle"
-                  fill="rgba(255,170,0,0.55)" fontSize={7} fontFamily="monospace">
-                  max {maxGRef.current.toFixed(1)}
-                </text>
-              )}
             </g>
-          )
-        })()}
+          )}
+        </g>
 
       </svg>
     </div>

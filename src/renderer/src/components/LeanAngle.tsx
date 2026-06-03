@@ -122,14 +122,14 @@ export default function LeanAngle() {
         <g>
           <rect x={84} y={6} width={78} height={58} fill="rgba(0,0,0,0.72)" rx={5} />
           <text x={123} y={22} textAnchor="middle"
-            fill="rgba(255,255,255,0.45)" fontSize={11}
-            fontFamily="monospace" letterSpacing={2}>ALT</text>
+            fill="rgba(255,255,255,0.75)" fontSize={12}
+            fontWeight="bold" fontFamily="monospace" letterSpacing={2}>ALT</text>
           <text x={123} y={48} textAnchor="middle"
             fill={altM !== null ? '#e0e0e0' : '#444'} fontSize={24}
             fontWeight="bold" fontFamily="monospace">{altFt}</text>
           <text x={123} y={59} textAnchor="middle"
-            fill="rgba(255,255,255,0.3)" fontSize={9}
-            fontFamily="sans-serif">ft</text>
+            fill="rgba(255,255,255,0.7)" fontSize={11}
+            fontWeight="bold" fontFamily="sans-serif">ft</text>
         </g>
 
         {/* Lean center — arch shape: rounded top, bottom clipped flat by SVG viewport */}
@@ -153,27 +153,26 @@ export default function LeanAngle() {
           </>
         )}
 
-        {/* G-METER — side-by-side: current G left, MAX right, bottom-aligned */}
+        {/* G-METER — side-by-side: G large left, MAX smaller top-right */}
         <g>
-          {/* "G" label above current value */}
-          <text x={435} y={12} textAnchor="middle"
-            fill="rgba(255,255,255,0.4)" fontSize={11}
-            fontFamily="monospace" letterSpacing={2}>G</text>
-          {/* Current G — left of pair */}
-          <rect x={410} y={18} width={50} height={28} fill="rgba(0,0,0,0.72)" rx={5} />
-          <text x={435} y={42} textAnchor="middle"
-            fill={hasG ? gColor : '#444'} fontSize={24}
+          {/* "G" label + box */}
+          <text x={445} y={11} textAnchor="middle"
+            fill="rgba(255,255,255,0.75)" fontSize={12}
+            fontWeight="bold" fontFamily="monospace" letterSpacing={2}>G</text>
+          <rect x={415} y={14} width={60} height={34} fill="rgba(0,0,0,0.72)" rx={5} />
+          <text x={445} y={40} textAnchor="middle"
+            fill={hasG ? gColor : '#444'} fontSize={30}
             fontWeight="bold" fontFamily="monospace">
             {hasG ? gVal.toFixed(1) : '--'}
           </text>
-          {/* MAX — right of pair, slightly smaller, same baseline */}
+          {/* MAX — right of G, smaller, sits higher */}
           {hasG && maxGRef.current > 0.05 && (
             <g>
-              <text x={512} y={12} textAnchor="middle"
-                fill="rgba(255,170,0,0.55)" fontSize={10}
-                fontFamily="monospace" letterSpacing={1}>MAX</text>
-              <rect x={488} y={20} width={48} height={26} fill="rgba(0,0,0,0.65)" rx={5} />
-              <text x={512} y={42} textAnchor="middle"
+              <text x={502} y={11} textAnchor="middle"
+                fill="rgba(255,170,0,0.85)" fontSize={11}
+                fontWeight="bold" fontFamily="monospace" letterSpacing={1}>MAX</text>
+              <rect x={478} y={14} width={48} height={23} fill="rgba(0,0,0,0.65)" rx={5} />
+              <text x={502} y={30} textAnchor="middle"
                 fill="rgba(255,170,0,0.92)" fontSize={18}
                 fontWeight="bold" fontFamily="monospace">
                 {maxGRef.current.toFixed(1)}

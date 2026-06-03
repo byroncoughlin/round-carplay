@@ -42,8 +42,9 @@ export default function SpeedDisplay() {
           {speed !== null ? speed : '--'}
         </span>
         <span style={{
-          fontSize: 11,
-          color: '#555',
+          fontSize: 13,
+          fontWeight: 700,
+          color: '#888',
           letterSpacing: 3,
           textTransform: 'uppercase',
         }}>
@@ -63,7 +64,7 @@ export default function SpeedDisplay() {
         <span style={{ fontSize: 32, fontWeight: 700, color: cardinal ? 'white' : '#333', lineHeight: 1 }}>
           {cardinal ?? '--'}
         </span>
-        <span style={{ fontSize: 14, color: '#666', marginTop: 2 }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#888', marginTop: 2 }}>
           {heading !== null ? `${Math.round(heading)}°` : ''}
         </span>
       </div>
@@ -80,7 +81,7 @@ export default function SpeedDisplay() {
         <span style={{ fontSize: 32, fontWeight: 700, color: tempF !== null ? 'white' : '#333', lineHeight: 1 }}>
           {tempF !== null ? `${tempF}°` : '--'}
         </span>
-        <span style={{ fontSize: 14, color: '#666', marginTop: 2 }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#888', marginTop: 2 }}>
           {tempF !== null ? 'F' : ''}
         </span>
       </div>

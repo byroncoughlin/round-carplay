@@ -158,12 +158,15 @@ export default function LeanAngle() {
         {/* Subtle dark backing for legibility */}
         <rect x={0} y={66} width={W} height={H - 66} fill="rgba(0,0,0,0.25)" />
 
-        {/* ALT — aviation EFIS-style box */}
+        {/* ALT — aviation EFIS-style box, anchored to number at x=138 y=35 */}
         {(() => {
-          const bx = 141.5      // box left edge
-          const by = 62         // box top
-          const bw = 82         // box width
-          const bh = 27         // box height
+          // Main number anchor: x=138 (right edge), y=35 (baseline), fontSize=20
+          const numX  = 138
+          const numY  = 35
+          const bx    = 55    // box left edge
+          const by    = 10    // box top
+          const bw    = 87    // box width  (right edge at 142)
+          const bh    = 32    // box height (bottom at 42)
           const altFtNum = altM !== null ? Math.round(altM * 3.28084) : null
           const prev = altFtNum !== null ? (altFtNum - 100).toLocaleString() : null
           const next = altFtNum !== null ? (altFtNum + 100).toLocaleString() : null
@@ -188,17 +191,17 @@ export default function LeanAngle() {
                 fontFamily="sans-serif">ft</text>
               {/* Ghost — previous 100ft */}
               {prev && (
-                <text x={bx + bw - 5} y={by + 18} textAnchor="end"
+                <text x={numX} y={numY - 13} textAnchor="end"
                   fill="rgba(255,255,255,0.14)" fontSize={8}
                   fontFamily="monospace">{prev}</text>
               )}
-              {/* Current altitude — main readout */}
-              <text x={bx + bw - 5} y={by + bh - 4} textAnchor="end"
-                fill={altM !== null ? '#e0e0e0' : '#444'} fontSize={15}
+              {/* Current altitude — main readout at exact anchor */}
+              <text x={numX} y={numY} textAnchor="end"
+                fill={altM !== null ? '#e0e0e0' : '#444'} fontSize={16}
                 fontWeight="bold" fontFamily="monospace">{altFt}</text>
               {/* Ghost — next 100ft */}
               {next && (
-                <text x={bx + bw - 5} y={by + bh + 7} textAnchor="end"
+                <text x={numX} y={numY + 10} textAnchor="end"
                   fill="rgba(255,255,255,0.1)" fontSize={8}
                   fontFamily="monospace">{next}</text>
               )}
@@ -221,8 +224,8 @@ export default function LeanAngle() {
 
         {/* G-METER — aviation arc gauge with max-G marker */}
         {(() => {
-          const cx      = CX + 100
-          const cy      = 80
+          const cx      = 460
+          const cy      = 22
           const r       = 19
           const maxScale = 2.0
 
@@ -271,14 +274,14 @@ export default function LeanAngle() {
               <text x={cx + r + 3} y={cy + 5} textAnchor="start"
                 fill="rgba(255,255,255,0.28)" fontSize={7} fontFamily="monospace">2</text>
               {/* Current G value */}
-              <text x={cx} y={cy + 15} textAnchor="middle"
-                fill={hasG ? gColor : '#444'} fontSize={13}
+              <text x={460} y={40} textAnchor="middle"
+                fill={hasG ? gColor : '#444'} fontSize={18}
                 fontWeight="bold" fontFamily="monospace">
                 {hasG ? gVal.toFixed(1) : '--'}
               </text>
               {/* Max G small label */}
               {hasG && maxGRef.current > 0.05 && (
-                <text x={cx} y={cy + 24} textAnchor="middle"
+                <text x={460} y={52} textAnchor="middle"
                   fill="rgba(255,170,0,0.55)" fontSize={7} fontFamily="monospace">
                   max {maxGRef.current.toFixed(1)}
                 </text>

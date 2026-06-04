@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { useCarplayStore } from '../store/store'
+import { useCarplayStore, useStatusStore } from '../store/store'
 
 const W           = 565
 const H           = 117
@@ -14,11 +14,12 @@ const REF    = '#ffd700'     // classic aviation gold
 
 
 export default function LeanAngle() {
-  const lean  = useCarplayStore(s => s.leanAngle)
-  const pitch = useCarplayStore(s => s.pitchAngle)
-  const altM  = useCarplayStore(s => s.altitude)
-  const gx    = useCarplayStore(s => s.gForceX)
-  const gy    = useCarplayStore(s => s.gForceY)
+  const lean      = useCarplayStore(s => s.leanAngle)
+  const pitch     = useCarplayStore(s => s.pitchAngle)
+  const altM      = useCarplayStore(s => s.altitude)
+  const gx        = useCarplayStore(s => s.gForceX)
+  const gy        = useCarplayStore(s => s.gForceY)
+  const setActive = useStatusStore(s => s.setActiveGraph)
 
   const leanVal  = lean  ?? 0
   const pitchVal = pitch ?? 0
@@ -109,13 +110,15 @@ export default function LeanAngle() {
         <line x1={CX + 72} y1={REF_Y} x2={CX + 72} y2={REF_Y + 9}
           stroke={REF} strokeWidth={3.5} strokeLinecap="round" />
         {/* Center pitch badge — replaces circle, sits on gold line */}
-        <rect x={CX - 30} y={REF_Y - 13} width={60} height={26}
-          fill="rgba(0,0,0,0.88)" rx={8} />
-        <text x={CX} y={REF_Y + 7} textAnchor="middle"
-          fill={pitch !== null ? REF : '#444'} fontSize={20}
-          fontWeight="bold" fontFamily="monospace">
-          {pitch !== null ? (absPitch === 0 ? '—' : `${pitchDir}${absPitch}°`) : '--'}
-        </text>
+        <g style={{ cursor: 'pointer' }} onClick={() => setActive('pitchAngle')}>
+          <rect x={CX - 30} y={REF_Y - 13} width={60} height={26}
+            fill="rgba(0,0,0,0.88)" rx={8} />
+          <text x={CX} y={REF_Y + 7} textAnchor="middle"
+            fill={pitch !== null ? REF : '#444'} fontSize={20}
+            fontWeight="bold" fontFamily="monospace">
+            {pitch !== null ? (absPitch === 0 ? '—' : `${pitchDir}${absPitch}°`) : '--'}
+          </text>
+        </g>
 
         {/* Roll arc and ticks removed */}
 
@@ -124,7 +127,7 @@ export default function LeanAngle() {
         <rect x={0} y={66} width={W} height={H - 66} fill="rgba(0,0,0,0.25)" />
 
         {/* ALT — simplified: label + big number + unit */}
-        <g>
+        <g style={{ cursor: 'pointer' }} onClick={() => setActive('altitude')}>
           <rect x={84} y={6} width={78} height={58} fill="rgba(0,0,0,0.72)" rx={5} />
           <text x={123} y={22} textAnchor="middle"
             fill="rgba(255,255,255,0.75)" fontSize={12}
@@ -138,18 +141,20 @@ export default function LeanAngle() {
         </g>
 
         {/* Lean center — arch shape: rounded top, bottom clipped flat by SVG viewport */}
-        <rect x={CX - 40} y={88} width={80} height={40}
-          fill="rgba(0,0,0,0.88)"
-          stroke="rgba(255,255,255,0.07)" strokeWidth={0.75}
-          rx={14} />
-        <text x={282.5} y={112} textAnchor="middle"
-          fill={hasData ? 'white' : '#444'} fontSize={24}
-          fontWeight="bold" fontFamily="sans-serif">
-          {hasData ? (absLean > 0 ? `${absLean}° ${side}` : '0°') : '--'}
-        </text>
+        <g style={{ cursor: 'pointer' }} onClick={() => setActive('leanAngle')}>
+          <rect x={CX - 40} y={88} width={80} height={40}
+            fill="rgba(0,0,0,0.88)"
+            stroke="rgba(255,255,255,0.07)" strokeWidth={0.75}
+            rx={14} />
+          <text x={282.5} y={112} textAnchor="middle"
+            fill={hasData ? 'white' : '#444'} fontSize={24}
+            fontWeight="bold" fontFamily="sans-serif">
+            {hasData ? (absLean > 0 ? `${absLean}° ${side}` : '0°') : '--'}
+          </text>
+        </g>
 
         {/* G-METER — side-by-side: G large left, MAX smaller top-right */}
-        <g>
+        <g style={{ cursor: 'pointer' }} onClick={() => setActive('gForce')}>
           {/* "G" label + box */}
           <text x={445} y={11} textAnchor="middle"
             fill="rgba(255,255,255,0.75)" fontSize={12}

@@ -1,4 +1,4 @@
-import { useCarplayStore } from '../store/store'
+import { useCarplayStore, useStatusStore } from '../store/store'
 
 interface CHTGaugeProps {
   side: 'L' | 'R'
@@ -19,7 +19,9 @@ function tempColor(temp: number): string {
 }
 
 export default function CHTGauge({ side }: CHTGaugeProps) {
-  const temp = useCarplayStore((s) => (side === 'L' ? s.chtLeft : s.chtRight))
+  const temp      = useCarplayStore((s) => (side === 'L' ? s.chtLeft : s.chtRight))
+  const setActive = useStatusStore(s => s.setActiveGraph)
+  const metricKey = side === 'L' ? 'chtLeft' : 'chtRight'
 
   const hasData = temp !== null
   const clamped = Math.max(0, Math.min(MAX_TEMP, temp ?? 0))
@@ -31,7 +33,10 @@ export default function CHTGauge({ side }: CHTGaugeProps) {
   const textCX = barX + BAR_W / 2
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div
+      style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+      onClick={() => setActive(metricKey as 'chtLeft' | 'chtRight')}
+    >
       <svg
         viewBox={`0 0 ${VW} ${VH}`}
         width="100%"

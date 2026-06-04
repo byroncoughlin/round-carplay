@@ -7,7 +7,6 @@ import {
   RadioGroup,
   TextField,
   Checkbox,
-  FormControl,
   FormLabel,
   Button,
   Dialog,
@@ -25,6 +24,7 @@ import { useTheme } from '@mui/material/styles'
 import { TransitionProps } from '@mui/material/transitions'
 import { KeyBindings } from "./KeyBindings"
 import { useCarplayStore, useStatusStore } from "../store/store"
+import { useDataLog } from "../store/dataLog"
 import { updateCameras as detectCameras } from '../utils/cameraDetection'
 import debounce from 'lodash.debounce'
 
@@ -60,12 +60,14 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
   const [resetMessage, setResetMessage] = useState("")
   const [closeCountdown, setCloseCountdown] = useState(0)
   const [hasChanges, setHasChanges] = useState(false)
+  const [confirmClearLog, setConfirmClearLog] = useState(false)
 
   const saveSettings = useCarplayStore(s => s.saveSettings)
   const isDongleConnected = useStatusStore(s => s.isDongleConnected)
   const setCameraFound = useStatusStore(s => s.setCameraFound)
   const showDiagnostics = useStatusStore(s => s.showDiagnostics)
   const setShowDiagnostics = useStatusStore(s => s.setShowDiagnostics)
+  const clearAllLog = useDataLog(s => s.clearAll)
   const theme = useTheme()
 
   const debouncedSave = useMemo(() => debounce((s: ExtraConfig) => saveSettings(s), 300), [saveSettings])
@@ -270,6 +272,10 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
         <Button size="small" variant="outlined" onClick={() => setOpenBindings(true)}>
           BINDINGS
         </Button>
+        <Button size="small" variant="outlined" color="error"
+          onClick={() => setConfirmClearLog(true)}>
+          CLEAR LOG
+        </Button>
       </Stack>
 
       <Dialog open={!!resetMessage} onClose={() => { setResetMessage(""); setCloseCountdown(0) }}>
@@ -287,6 +293,19 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
         onClose={() => setOpenBindings(false)}>
         <DialogTitle>Key Bindings</DialogTitle>
         <DialogContent><KeyBindings settings={activeSettings} updateKey={settingsChange} /></DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmClearLog} onClose={() => setConfirmClearLog(false)}>
+        <DialogTitle>Clear All Log Data?</DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          <Typography sx={{ mb: 2 }}>This will erase all recorded sensor history.</Typography>
+          <Stack direction="row" justifyContent="center" gap={2}>
+            <Button variant="outlined" onClick={() => setConfirmClearLog(false)}>Cancel</Button>
+            <Button variant="contained" color="error" onClick={() => { clearAllLog(); setConfirmClearLog(false) }}>
+              Clear All
+            </Button>
+          </Stack>
+        </DialogContent>
       </Dialog>
     </Box>
   )

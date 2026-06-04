@@ -10,6 +10,7 @@ import SpeedDisplay from './components/SpeedDisplay';
 import LeanAngle from './components/LeanAngle';
 import CHTGauge from './components/CHTGauge';
 import DevPanel from './components/DevPanel';
+import MetricGraph from './components/MetricGraph';
 import { Box, Modal } from '@mui/material';
 import { useCarplayStore, useStatusStore } from "./store/store";
 import type { KeyCommand } from "./components/worker/types";
@@ -31,8 +32,10 @@ function App() {
   const [commandCounter, setCommandCounter] = useState(0);
   const [keyCommand, setKeyCommand] = useState('');
 
-  const reverse = useStatusStore(state => state.reverse);
-  const setReverse = useStatusStore(state => state.setReverse);
+  const reverse      = useStatusStore(state => state.reverse);
+  const setReverse   = useStatusStore(state => state.setReverse);
+  const activeGraph  = useStatusStore(state => state.activeGraph);
+  const setActiveGraph = useStatusStore(state => state.setActiveGraph);
 
   const settings = useCarplayStore(state => state.settings);
   const saveSettings = useCarplayStore(state => state.saveSettings);
@@ -190,6 +193,12 @@ function App() {
                   <Camera settings={settings} />
                 </Box>
               </Modal>
+              {activeGraph && (
+                <MetricGraph
+                  metricKey={activeGraph}
+                  onClose={() => setActiveGraph(null)}
+                />
+              )}
             </div>
           </div>
         </div>

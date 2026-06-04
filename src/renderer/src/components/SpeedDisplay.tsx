@@ -1,4 +1,5 @@
-import { useCarplayStore } from '../store/store'
+import type { CSSProperties } from 'react'
+import { useCarplayStore, useStatusStore } from '../store/store'
 
 function toCardinal(deg: number): string {
   const cardinals = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -9,10 +10,13 @@ function toF(c: number): number {
   return Math.round(c * 9 / 5 + 32)
 }
 
+const tapStyle: CSSProperties = { cursor: 'pointer' }
+
 export default function SpeedDisplay() {
-  const speedKmh = useCarplayStore((s) => s.gpsSpeed)
-  const heading  = useCarplayStore((s) => s.heading)
-  const ambientC = useCarplayStore((s) => s.ambientTemp)
+  const speedKmh    = useCarplayStore((s) => s.gpsSpeed)
+  const heading     = useCarplayStore((s) => s.heading)
+  const ambientC    = useCarplayStore((s) => s.ambientTemp)
+  const setActive   = useStatusStore((s) => s.setActiveGraph)
 
   const speed    = speedKmh !== null ? Math.round(speedKmh * 0.621371) : null
   const cardinal = heading  !== null ? toCardinal(heading) : null
@@ -22,45 +26,29 @@ export default function SpeedDisplay() {
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
 
       {/* Speed + mph — bottom 0, centered */}
-      <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}>
+      <div
+        style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', ...tapStyle }}
+        onClick={() => setActive('speed')}
+      >
         <span style={{
-          fontSize: 90,
-          fontWeight: 800,
+          fontSize: 90, fontWeight: 800,
           color: speed !== null ? 'white' : '#333',
-          lineHeight: 1,
-          letterSpacing: -2,
-          marginBottom: -9,
+          lineHeight: 1, letterSpacing: -2, marginBottom: -9,
         }}>
           {speed !== null ? speed : '--'}
         </span>
-        <span style={{
-          fontSize: 13,
-          fontWeight: 700,
-          color: '#888',
-          letterSpacing: 3,
-          textTransform: 'uppercase',
-        }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#888', letterSpacing: 3, textTransform: 'uppercase' }}>
           mph
         </span>
       </div>
 
       {/* Heading — left 17%, bottom 1px */}
-      <div style={{
-        position: 'absolute',
-        bottom: 1,
-        left: '17%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}>
+      <div
+        style={{ position: 'absolute', bottom: 1, left: '17%',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', ...tapStyle }}
+        onClick={() => setActive('heading')}
+      >
         <span style={{ fontSize: 32, fontWeight: 700, color: cardinal ? 'white' : '#333', lineHeight: 1 }}>
           {cardinal ?? '--'}
         </span>
@@ -70,14 +58,11 @@ export default function SpeedDisplay() {
       </div>
 
       {/* Ambient temp — right 17%, bottom 1px */}
-      <div style={{
-        position: 'absolute',
-        bottom: 1,
-        right: '17%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}>
+      <div
+        style={{ position: 'absolute', bottom: 1, right: '17%',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', ...tapStyle }}
+        onClick={() => setActive('ambientTemp')}
+      >
         <span style={{ fontSize: 32, fontWeight: 700, color: tempF !== null ? 'white' : '#333', lineHeight: 1 }}>
           {tempF !== null ? `${tempF}°` : '--'}
         </span>

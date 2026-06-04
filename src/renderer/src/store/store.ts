@@ -1,6 +1,17 @@
 import { create } from 'zustand'
 import { ExtraConfig } from '../../../main/Globals'
 import { io } from 'socket.io-client'
+import { useDataLog } from './dataLog'
+import type { MetricKey } from './dataLog'
+
+function toF(c: number): number { return c * 9 / 5 + 32 }
+function toFt(m: number): number { return m * 3.28084 }
+function toMph(kmh: number): number { return kmh * 0.621371 }
+
+function log(key: MetricKey, val: number | null | undefined) {
+  if (val === null || val === undefined || !isFinite(val)) return
+  useDataLog.getState().addPoint(key, val)
+}
 
 const URL = 'http://localhost:4000'
 
@@ -152,6 +163,7 @@ export interface StatusStore {
   isStreaming: boolean
   cameraFound: boolean
   showDiagnostics: boolean
+  activeGraph: MetricKey | null
 
   setCameraFound: (found: boolean) => void
   setDongleConnected: (connected: boolean) => void
@@ -159,6 +171,7 @@ export interface StatusStore {
   setReverse: (reverse: boolean) => void
   setLights: (lights: boolean) => void
   setShowDiagnostics: (show: boolean) => void
+  setActiveGraph: (key: MetricKey | null) => void
 }
 
 export const useStatusStore = create<StatusStore>((set) => ({
@@ -168,6 +181,7 @@ export const useStatusStore = create<StatusStore>((set) => ({
   isStreaming: false,
   cameraFound: false,
   showDiagnostics: false,
+  activeGraph: null,
 
   setCameraFound: (found) => set({ cameraFound: found }),
   setDongleConnected: (connected) => set({ isDongleConnected: connected }),
@@ -175,6 +189,7 @@ export const useStatusStore = create<StatusStore>((set) => ({
   setReverse: (reverse) => set({ reverse }),
   setLights: (lights) => set({ lights }),
   setShowDiagnostics: (show) => set({ showDiagnostics: show }),
+  setActiveGraph: (key) => set({ activeGraph: key }),
 }))
 
 // Socket.IO Event-Handler
@@ -197,19 +212,28 @@ socket.on('camera-found', (found: boolean) => {
 
 socket.on('gps', (data: { speed: number; heading: number; altitude: number }) => {
   useCarplayStore.setState({ gpsSpeed: data.speed, heading: data.heading, altitude: data.altitude })
+  log('speed',    toMph(data.speed))
+  log('heading',  data.heading)
+  log('altitude', toFt(data.altitude))
 })
 socket.on('lean', (angle: number) => {
   useCarplayStore.setState({ leanAngle: angle })
+  log('leanAngle', angle)
 })
-socket.on('cht', (data: { left: number; right: number }) => {
+socket.on('cht', (data: { left: number | null; right: number | null }) => {
   useCarplayStore.setState({ chtLeft: data.left, chtRight: data.right })
+  if (data.left  !== null) log('chtLeft',  toF(data.left))
+  if (data.right !== null) log('chtRight', toF(data.right))
 })
 socket.on('ambient', (temp: number) => {
   useCarplayStore.setState({ ambientTemp: temp })
+  log('ambientTemp', toF(temp))
 })
 socket.on('gforce', (data: { x: number; y: number }) => {
   useCarplayStore.setState({ gForceX: data.x, gForceY: data.y })
+  log('gForce', Math.sqrt((data.x ?? 0) ** 2 + (data.y ?? 0) ** 2))
 })
 socket.on('pitch', (angle: number) => {
   useCarplayStore.setState({ pitchAngle: angle })
+  log('pitchAngle', angle)
 })

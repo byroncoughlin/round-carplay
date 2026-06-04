@@ -222,8 +222,8 @@ socket.on('lean', (angle: number) => {
 })
 socket.on('cht', (data: { left: number | null; right: number | null }) => {
   useCarplayStore.setState({ chtLeft: data.left, chtRight: data.right })
-  if (data.left  !== null) log('chtLeft',  toF(data.left))
-  if (data.right !== null) log('chtRight', toF(data.right))
+  if (data.left  !== null) log('chtLeft',  data.left)
+  if (data.right !== null) log('chtRight', data.right)
 })
 socket.on('ambient', (temp: number) => {
   useCarplayStore.setState({ ambientTemp: temp })

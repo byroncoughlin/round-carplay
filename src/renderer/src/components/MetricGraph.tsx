@@ -86,7 +86,8 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
     if (!panRef.current.active) return
     const dx   = e.clientX - panRef.current.startX
     const msPx = WINDOW_MS / CW
-    setViewOffset(Math.max(0, Math.min(MAX_AGE_MS - WINDOW_MS, panRef.current.startOff - dx * msPx)))
+    // natural drag: finger right → content moves right → older data (increase offset)
+    setViewOffset(Math.max(0, Math.min(MAX_AGE_MS - WINDOW_MS, panRef.current.startOff + dx * msPx)))
   }
   const onPtrUp = () => { panRef.current.active = false }
 

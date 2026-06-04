@@ -113,7 +113,7 @@ export default function LeanAngle() {
         <line x1={CX + 72} y1={REF_Y} x2={CX + 72} y2={REF_Y + 9}
           stroke={REF} strokeWidth={3.5} strokeLinecap="round" />
         {/* Center pitch badge — replaces circle, sits on gold line */}
-        <g style={{ cursor: 'pointer' }} onClick={() => tap('pitchAngle')}>
+        <g>
           <rect x={CX - 30} y={REF_Y - 13} width={60} height={26}
             fill="rgba(0,0,0,0.88)" rx={8} />
           <text x={CX} y={REF_Y + 7} textAnchor="middle"
@@ -130,7 +130,7 @@ export default function LeanAngle() {
         <rect x={0} y={66} width={W} height={H - 66} fill="rgba(0,0,0,0.25)" />
 
         {/* ALT — simplified: label + big number + unit */}
-        <g style={{ cursor: 'pointer' }} onClick={() => tap('altitude')}>
+        <g>
           <rect x={84} y={6} width={78} height={58} fill="rgba(0,0,0,0.72)" rx={5} />
           <text x={123} y={22} textAnchor="middle"
             fill="rgba(255,255,255,0.75)" fontSize={12}
@@ -144,7 +144,7 @@ export default function LeanAngle() {
         </g>
 
         {/* Lean center — arch shape: rounded top, bottom clipped flat by SVG viewport */}
-        <g style={{ cursor: 'pointer' }} onClick={() => tap('leanAngle')}>
+        <g>
           <rect x={CX - 40} y={88} width={80} height={40}
             fill="rgba(0,0,0,0.88)"
             stroke="rgba(255,255,255,0.07)" strokeWidth={0.75}
@@ -157,7 +157,7 @@ export default function LeanAngle() {
         </g>
 
         {/* G-METER — side-by-side: G large left, MAX smaller top-right */}
-        <g style={{ cursor: 'pointer' }} onClick={() => tap('gForce')}>
+        <g>
           {/* "G" label + box */}
           <text x={445} y={11} textAnchor="middle"
             fill="rgba(255,255,255,0.75)" fontSize={12}
@@ -183,6 +183,18 @@ export default function LeanAngle() {
             </g>
           )}
         </g>
+
+        {/* ── INVISIBLE HIT ZONES (on top of everything, full-arc coverage) ──
+              Arc is W×H = 565×117.  Zones tile without overlap:
+              • ALT   : left strip  x  0–165
+              • PITCH : upper center x 165–390, y 0–78
+              • LEAN  : lower center x 165–390, y 78–117
+              • G     : right strip  x 390–565
+        */}
+        <rect x={0}   y={0}  width={165} height={H}      fill="transparent" style={{ cursor: 'pointer' }} onClick={() => tap('altitude')} />
+        <rect x={390} y={0}  width={175} height={H}      fill="transparent" style={{ cursor: 'pointer' }} onClick={() => tap('gForce')} />
+        <rect x={165} y={0}  width={225} height={78}     fill="transparent" style={{ cursor: 'pointer' }} onClick={() => tap('pitchAngle')} />
+        <rect x={165} y={78} width={225} height={H - 78} fill="transparent" style={{ cursor: 'pointer' }} onClick={() => tap('leanAngle')} />
 
       </svg>
     </div>

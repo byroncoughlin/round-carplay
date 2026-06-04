@@ -151,12 +151,14 @@ export interface StatusStore {
   isDongleConnected: boolean
   isStreaming: boolean
   cameraFound: boolean
+  showDiagnostics: boolean
 
   setCameraFound: (found: boolean) => void
   setDongleConnected: (connected: boolean) => void
   setStreaming: (streaming: boolean) => void
   setReverse: (reverse: boolean) => void
   setLights: (lights: boolean) => void
+  setShowDiagnostics: (show: boolean) => void
 }
 
 export const useStatusStore = create<StatusStore>((set) => ({
@@ -165,12 +167,14 @@ export const useStatusStore = create<StatusStore>((set) => ({
   isDongleConnected: false,
   isStreaming: false,
   cameraFound: false,
+  showDiagnostics: false,
 
   setCameraFound: (found) => set({ cameraFound: found }),
   setDongleConnected: (connected) => set({ isDongleConnected: connected }),
   setStreaming: (streaming) => set({ isStreaming: streaming }),
   setReverse: (reverse) => set({ reverse }),
   setLights: (lights) => set({ lights }),
+  setShowDiagnostics: (show) => set({ showDiagnostics: show }),
 }))
 
 // Socket.IO Event-Handler

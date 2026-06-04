@@ -19,6 +19,7 @@ import {
   Slider,
   CircularProgress,
   Typography,
+  Divider,
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { TransitionProps } from '@mui/material/transitions'
@@ -38,6 +39,12 @@ const Transition = React.forwardRef(function Transition(
   return <Slide direction="up" ref={ref} {...props} />
 })
 
+const cap = (s: string) => (
+  <Typography variant="caption" sx={{ fontSize: 11 }}>{s}</Typography>
+)
+
+const Rule = () => <Divider sx={{ opacity: 0.15, my: 0.75 }} />
+
 const Settings: React.FC<SettingsProps> = ({ settings }) => {
   if (!settings) return null
 
@@ -46,7 +53,7 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
     audioVolume: settings.audioVolume ?? 1.0,
     navVolume: settings.navVolume ?? 1.0,
   })
-  const [micLabel, setMicLabel] = useState('no device available')
+  const [micLabel, setMicLabel] = useState('no device')
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
   const [openBindings, setOpenBindings] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
@@ -57,9 +64,11 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
   const saveSettings = useCarplayStore(s => s.saveSettings)
   const isDongleConnected = useStatusStore(s => s.isDongleConnected)
   const setCameraFound = useStatusStore(s => s.setCameraFound)
+  const showDiagnostics = useStatusStore(s => s.showDiagnostics)
+  const setShowDiagnostics = useStatusStore(s => s.setShowDiagnostics)
   const theme = useTheme()
 
-  const debouncedSave = useMemo(() => debounce((newSettings: ExtraConfig) => saveSettings(newSettings), 300), [saveSettings])
+  const debouncedSave = useMemo(() => debounce((s: ExtraConfig) => saveSettings(s), 300), [saveSettings])
   useEffect(() => () => debouncedSave.cancel(), [debouncedSave])
 
   const requiresRestartParams: (keyof ExtraConfig)[] = [
@@ -69,14 +78,12 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
   const settingsChange = (key: keyof ExtraConfig, value: any) => {
     const updated = { ...activeSettings, [key]: value }
     setActiveSettings(updated)
-
     if (['audioVolume', 'navVolume'].includes(key)) {
       debouncedSave(updated)
     } else if (['kiosk', 'nightMode'].includes(key)) {
       saveSettings(updated)
     } else if (requiresRestartParams.includes(key)) {
-      const pending = requiresRestartParams.some(p => updated[p] !== settings[p])
-      setHasChanges(pending)
+      setHasChanges(requiresRestartParams.some(p => updated[p] !== settings[p]))
     } else {
       saveSettings(updated)
     }
@@ -85,195 +92,204 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
   const handleSave = async () => {
     setIsResetting(true)
     setCloseCountdown(3)
-
-    let resetStatus = ""
+    let msg = ""
     try {
       if (isDongleConnected) {
-        setResetMessage("Dongle Reset...")
+        setResetMessage("Resetting...")
         const ok = await window.carplay.usb.forceReset()
-        resetStatus = ok ? "Success" : "Failed"
-      } else {
-        resetStatus = "Settings saved (no dongle connected)"
-      }
-    } catch {
-      resetStatus = "Dongle Reset Error."
-    }
-
+        msg = ok ? "Success" : "Failed"
+      } else { msg = "Saved" }
+    } catch { msg = "Error" }
     await saveSettings(activeSettings)
     setHasChanges(false)
     setIsResetting(false)
-    setResetMessage(resetStatus)
+    setResetMessage(msg)
   }
 
   useEffect(() => {
     if (!resetMessage) return
-    const timerId = setInterval(() => {
+    const t = setInterval(() => {
       setCloseCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timerId)
-          setResetMessage("")
-          return 0
-        }
+        if (prev <= 1) { clearInterval(t); setResetMessage(""); return 0 }
         return prev - 1
       })
     }, 1000)
-    return () => clearInterval(timerId)
+    return () => clearInterval(t)
   }, [resetMessage])
 
   useEffect(() => {
     const updateMic = async () => {
       try {
         const label = await window.carplay.usb.getSysdefaultPrettyName()
-        const final = label && !['sysdefault', 'null'].includes(label) ? label : 'no device available'
+        const final = label && !['sysdefault', 'null'].includes(label) ? label : 'no device'
         setMicLabel(final)
-        if (!activeSettings.microphone && final !== 'no device available') {
+        if (!activeSettings.microphone && final !== 'no device') {
           const upd = { ...activeSettings, microphone: 'sysdefault' }
-          setActiveSettings(upd)
-          debouncedSave(upd)
+          setActiveSettings(upd); debouncedSave(upd)
         }
-      } catch {
-        console.warn('[Settings] Mic label fetch failed')
-      }
+      } catch { }
     }
     updateMic()
-    const micUsbHandler = (_: any, data: { type: string }) => {
-      if (['attach', 'plugged', 'detach', 'unplugged'].includes(data.type)) updateMic()
-    }
-    window.carplay.usb.listenForEvents(micUsbHandler)
+    window.carplay.usb.listenForEvents((_: any, d: { type: string }) => {
+      if (['attach','plugged','detach','unplugged'].includes(d.type)) updateMic()
+    })
   }, [])
 
   useEffect(() => {
     detectCameras(setCameraFound, saveSettings, activeSettings).then(setCameras)
-    const usbHandler = (_: any, data: { type: string }) => {
-      if (['attach', 'plugged', 'detach', 'unplugged'].includes(data.type)) {
+    window.carplay.usb.listenForEvents((_: any, d: { type: string }) => {
+      if (['attach','plugged','detach','unplugged'].includes(d.type))
         detectCameras(setCameraFound, saveSettings, activeSettings).then(setCameras)
-      }
-    }
-    window.carplay.usb.listenForEvents(usbHandler)
+    })
   }, [])
 
-
-  const renderField = (label: string, key: keyof ExtraConfig, min?: number, max?: number) => (
+  const numField = (label: string, key: keyof ExtraConfig, min?: number) => (
     <Grid size={{ xs: 3 }} key={String(key)}>
       <TextField
-        label={label}
-        type="number"
-        fullWidth
-        inputProps={{ ...(min != null && { min }), ...(max != null && { max }) }}
+        label={label} type="number" fullWidth size="small"
+        inputProps={{ ...(min != null && { min }) }}
         value={activeSettings[key] as number | string}
         onChange={e => settingsChange(key, Number(e.target.value))}
-        sx={{ mx: 2, maxWidth: 140 }}
+        sx={{ '& .MuiInputLabel-root': { fontSize: 10, letterSpacing: 0.5 } }}
       />
     </Grid>
   )
 
-  const renderSliderField = (label: string, key: keyof ExtraConfig) => (
-    <Grid size={{ xs: 6 }} key={String(key)}>
-      <FormControl fullWidth sx={{ px: 2 }}>
-        <FormLabel>{label}</FormLabel>
-        <Slider
-          value={Math.round((activeSettings[key] as number) * 100)}
-          min={0} max={100} step={5} marks valueLabelDisplay="auto"
-          onChange={(_, v) => typeof v === 'number' && settingsChange(key, v / 100)}
-        />
-      </FormControl>
-    </Grid>
-  )
+  return (
+    <Box
+      className={theme.palette.mode === 'dark' ? 'App-header-dark' : 'App-header-light'}
+      p={1.5} display="flex" flexDirection="column" height="100%"
+      sx={{ boxSizing: 'border-box' }}
+    >
+      <Box sx={{ overflowY: 'auto', flexGrow: 1 }}>
 
-  const renderCameras = () => (
-    <Grid size={{ xs: 6 }}>
-      <FormControl fullWidth>
-        <FormLabel>Camera</FormLabel>
-        <RadioGroup
-          value={activeSettings.camera}
-          onChange={e => settingsChange('camera', e.target.value)}
-        >
-          {cameras.map(cam => (
-            <FormControlLabel
-              key={cam.deviceId}
-              value={cam.deviceId}
-              control={<Radio />}
-              label={cam.label || 'Camera'}
+        {/* ── VIDEO ── */}
+        <Grid container spacing={1} sx={{ pt: 1 }}>
+          {numField('WIDTH',      'width')}
+          {numField('HEIGHT',     'height')}
+          {numField('FPS',        'fps', 10)}
+          {numField('DPI',        'dpi')}
+          {numField('FORMAT',     'format')}
+          {numField('IBOX VER',   'iBoxVersion')}
+          {numField('DELAY ms',   'mediaDelay')}
+          {numField('PHONE MODE', 'phoneWorkMode')}
+        </Grid>
+
+        <Rule />
+
+        {/* ── AUDIO — two sliders side by side ── */}
+        <Grid container spacing={2} sx={{ px: 0.5 }}>
+          <Grid size={{ xs: 6 }}>
+            <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>AUDIO VOL</FormLabel>
+            <Slider size="small"
+              value={Math.round((activeSettings.audioVolume ?? 1) * 100)}
+              min={0} max={100} step={5} valueLabelDisplay="auto"
+              onChange={(_, v) => typeof v === 'number' && settingsChange('audioVolume', v / 100)}
+            />
+          </Grid>
+          <Grid size={{ xs: 6 }}>
+            <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>NAV VOL</FormLabel>
+            <Slider size="small"
+              value={Math.round((activeSettings.navVolume ?? 1) * 100)}
+              min={0} max={100} step={5} valueLabelDisplay="auto"
+              onChange={(_, v) => typeof v === 'number' && settingsChange('navVolume', v / 100)}
+            />
+          </Grid>
+        </Grid>
+
+        <Rule />
+
+        {/* ── TOGGLES — all horizontal ── */}
+        <Stack direction="row" flexWrap="wrap" sx={{ mx: -0.5 }}>
+          {[
+            { label: 'KIOSK',       key: 'kiosk',             val: activeSettings.kiosk },
+            { label: 'DARK MODE',   key: 'nightMode',          val: activeSettings.nightMode },
+            { label: 'NO AUDIO',    key: 'audioTransferMode',  val: activeSettings.audioTransferMode },
+            { label: 'SAMPLE DATA', key: null,                 val: showDiagnostics },
+          ].map(({ label, key, val }) => (
+            <FormControlLabel key={label}
+              sx={{ mx: 0.5, my: 0 }}
+              control={
+                <Checkbox size="small" checked={!!val} onChange={e => {
+                  if (key) settingsChange(key as keyof ExtraConfig, e.target.checked)
+                  else setShowDiagnostics(e.target.checked)
+                }} />
+              }
+              label={cap(label)}
             />
           ))}
-        </RadioGroup>
-      </FormControl>
-    </Grid>
-  )
+        </Stack>
 
-  const handleClosePopup = () => {
-    setResetMessage("")
-    setCloseCountdown(0)
-  }
+        <Rule />
 
-  return (
-    <Box className={theme.palette.mode === 'dark' ? 'App-header-dark' : 'App-header-light'} p={2} display="flex" flexDirection="column" height="100%">
-      <Box sx={{ overflowY: 'auto', overflowX: 'hidden', flexGrow: 1, pt: 2, pb: 1, px: 1.5 }}>
-        <Grid container spacing={2} sx={{ px: 1 }}>
-          {renderField('WIDTH', 'width', 800)}
-          {renderField('HEIGHT', 'height', 480)}
-          {renderField('FPS', 'fps', 10)}
-          {renderField('DPI', 'dpi')}
-          {renderField('FORMAT', 'format')}
-          {renderField('IBOX VERSION', 'iBoxVersion')}
-          {renderField('MEDIA DELAY', 'mediaDelay')}
-          {renderField('PHONE WORK MODE', 'phoneWorkMode')}
-          {renderSliderField('AUDIO VOLUME', 'audioVolume')}
-          {renderSliderField('NAV VOLUME', 'navVolume')}
-
-          <Grid size={{ xs: 3 }} sx={{ minWidth: 140, mx: 2, display: 'flex', justifyContent: 'center' }}>
-            <FormControl>
-              <Stack direction="column" spacing={0.5}>
-                <FormControlLabel control={<Checkbox checked={activeSettings.kiosk} onChange={e => settingsChange('kiosk', e.target.checked)} />} label="KIOSK" />
-                <FormControlLabel control={<Checkbox checked={activeSettings.nightMode} onChange={e => settingsChange('nightMode', e.target.checked)} />} label="DARK MODE" />
-                <FormControlLabel control={<Checkbox checked={activeSettings.audioTransferMode} onChange={e => settingsChange('audioTransferMode', e.target.checked)} />} label="DISABLE AUDIO" />
-              </Stack>
-            </FormControl>
+        {/* ── CONNECTIVITY — wifi + mic side by side ── */}
+        <Grid container spacing={1} sx={{ px: 0.5 }}>
+          <Grid size={{ xs: 5 }}>
+            <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>WIFI</FormLabel>
+            <RadioGroup row value={activeSettings.wifiType}
+              onChange={e => settingsChange('wifiType', e.target.value)}>
+              <FormControlLabel value="2.4ghz" control={<Radio size="small" />} label={cap('2.4G')} />
+              <FormControlLabel value="5ghz"   control={<Radio size="small" />} label={cap('5G')} />
+            </RadioGroup>
           </Grid>
-
-          <Grid size={{ xs: 3 }} sx={{ minWidth: 140, mx: 2, display: 'flex', justifyContent: 'center' }}>
-            <FormControl fullWidth><FormLabel>WIFI TYPE</FormLabel><RadioGroup value={activeSettings.wifiType} onChange={e => settingsChange('wifiType', e.target.value)}><Stack direction="column"><FormControlLabel value="2.4ghz" control={<Radio />} label="2.4G" /><FormControlLabel value="5ghz" control={<Radio />} label="5G" /></Stack></RadioGroup></FormControl>
+          <Grid size={{ xs: 7 }}>
+            <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>MICROPHONE</FormLabel>
+            <RadioGroup row value={activeSettings.micType}
+              onChange={e => settingsChange('micType', e.target.value)}>
+              <FormControlLabel value="os"  control={<Radio size="small" />} label={cap(`OS: ${micLabel}`)} sx={{ mr: 1 }} />
+              <FormControlLabel value="box" control={<Radio size="small" />} label={cap('BOX')} />
+            </RadioGroup>
           </Grid>
-
-          <Grid size={{ xs: 3 }} sx={{ minWidth: 140, mx: 2, display: 'flex', justifyContent: 'center' }}>
-            <FormControl fullWidth><FormLabel>MICROPHONE</FormLabel><RadioGroup value={activeSettings.micType} onChange={e => settingsChange('micType', e.target.value)}><Stack direction="column"><FormControlLabel value="os" control={<Radio />} label={<Typography noWrap>OS: {micLabel}</Typography>} /><FormControlLabel value="box" control={<Radio />} label="BOX" /></Stack></RadioGroup></FormControl>
-          </Grid>
-
-          {cameras.length > 0 && renderCameras()}
         </Grid>
+
+        {/* ── CAMERA (if present) ── */}
+        {cameras.length > 0 && (
+          <>
+            <Rule />
+            <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>CAMERA</FormLabel>
+            <RadioGroup row value={activeSettings.camera}
+              onChange={e => settingsChange('camera', e.target.value)}>
+              {cameras.map(cam => (
+                <FormControlLabel key={cam.deviceId} value={cam.deviceId}
+                  control={<Radio size="small" />} label={cap(cam.label || 'Camera')} />
+              ))}
+            </RadioGroup>
+          </>
+        )}
+
       </Box>
 
-      <Box
-        position="sticky"
-        bottom={0}
-        bgcolor="transparent"
-        display="flex"
-        justifyContent="center"
-        sx={{ pt: 1, pb: 1 }}
-      >
-        <Box
-          sx={{
-            backgroundColor: theme.palette.background.default,
-            px: 2,
-            py: 1,
-            borderRadius: 2,
-            boxShadow: theme.shadows[2],
-            display: 'flex',
-            gap: 2,
-          }}
-        >
-          <Button variant="contained" color={hasChanges ? 'primary' : 'inherit'} onClick={hasChanges ? handleSave : undefined} disabled={!hasChanges || isResetting}>SAVE</Button>
-          <Button variant="outlined" onClick={() => setOpenBindings(true)}>BINDINGS</Button>
-        </Box>
-      </Box>
+      {/* ── BUTTONS ── */}
+      <Stack direction="row" justifyContent="center" gap={1.5} pt={1}>
+        <Button size="small" variant="contained"
+          color={hasChanges ? 'primary' : 'inherit'}
+          disabled={!hasChanges || isResetting}
+          onClick={hasChanges ? handleSave : undefined}>
+          {isResetting ? <CircularProgress size={16} /> : 'SAVE'}
+        </Button>
+        <Button size="small" variant="outlined" onClick={() => setOpenBindings(true)}>
+          BINDINGS
+        </Button>
+      </Stack>
 
-      {isResetting && <Box display="flex" justifyContent="center" sx={{ mt: 2 }}><CircularProgress /></Box>}
+      <Dialog open={!!resetMessage} onClose={() => { setResetMessage(""); setCloseCountdown(0) }}>
+        <DialogTitle>Status</DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          <Typography sx={{ mb: 2 }}>{resetMessage}</Typography>
+          <Button variant="outlined" onClick={() => { setResetMessage(""); setCloseCountdown(0) }}>
+            Close{closeCountdown > 0 ? ` (${closeCountdown})` : ''}
+          </Button>
+        </DialogContent>
+      </Dialog>
 
-      <Dialog open={!!resetMessage} onClose={handleClosePopup}><DialogTitle>Reset Status</DialogTitle><DialogContent sx={{ textAlign: 'center' }}><Typography variant="body1" sx={{ mb: 2 }}>{resetMessage}</Typography><Box display="flex" justifyContent="center"><Button variant="outlined" onClick={handleClosePopup}>Close{closeCountdown > 0 ? ` (${closeCountdown})` : ''}</Button></Box></DialogContent></Dialog>
-
-      <Dialog open={openBindings} TransitionComponent={Transition} keepMounted PaperProps={{ sx: { minHeight: '50%', minWidth: '50%' } }} onClose={() => setOpenBindings(false)}><DialogTitle>Key Bindings</DialogTitle><DialogContent><KeyBindings settings={activeSettings} updateKey={settingsChange} /></DialogContent></Dialog>
+      <Dialog open={openBindings} TransitionComponent={Transition} keepMounted
+        PaperProps={{ sx: { minHeight: '50%', minWidth: '50%' } }}
+        onClose={() => setOpenBindings(false)}>
+        <DialogTitle>Key Bindings</DialogTitle>
+        <DialogContent><KeyBindings settings={activeSettings} updateKey={settingsChange} /></DialogContent>
+      </Dialog>
     </Box>
   )
 }
 
-export default Settings;
+export default Settings

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useCarplayStore } from '../store/store'
+import { useCarplayStore, useStatusStore } from '../store/store'
 
 const STATES = [
   {
@@ -54,7 +54,7 @@ const STATES = [
 
 export default function DevPanel() {
   const [index, setIndex] = useState(0)
-  const [visible, setVisible] = useState(true)
+  const visible = useStatusStore(s => s.showDiagnostics)
 
   const apply = (i: number) => {
     const s = STATES[i]
@@ -84,30 +84,7 @@ export default function DevPanel() {
     apply(i)
   }
 
-  if (!visible) {
-    return (
-      <button
-        onClick={() => setVisible(true)}
-        style={{
-          position: 'absolute',
-          bottom: 16,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(0,0,0,0.6)',
-          border: '1px solid #444',
-          borderRadius: '50%',
-          width: 40,
-          height: 40,
-          color: '#666',
-          fontSize: 20,
-          cursor: 'pointer',
-          zIndex: 200,
-        }}
-      >
-        ⚙
-      </button>
-    )
-  }
+  if (!visible) return null
 
   return (
     <div
@@ -133,7 +110,6 @@ export default function DevPanel() {
         {STATES[index].label}
       </span>
       <button onClick={next} style={btnStyle}>▶</button>
-      <button onClick={() => setVisible(false)} style={{ ...btnStyle, color: '#555', marginLeft: 6 }}>✕</button>
     </div>
   )
 }

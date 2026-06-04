@@ -108,9 +108,14 @@ export default function LeanAngle() {
           stroke={REF} strokeWidth={3.5} strokeLinecap="round" />
         <line x1={CX + 72} y1={REF_Y} x2={CX + 72} y2={REF_Y + 9}
           stroke={REF} strokeWidth={3.5} strokeLinecap="round" />
-        {/* Center circle + dot */}
-        <circle cx={CX} cy={REF_Y} r={5} fill="none" stroke={REF} strokeWidth={2.5} />
-        <circle cx={CX} cy={REF_Y} r={2} fill={REF} />
+        {/* Center pitch badge — replaces circle, sits on gold line */}
+        <rect x={CX - 30} y={REF_Y - 13} width={60} height={26}
+          fill="rgba(0,0,0,0.88)" rx={8} />
+        <text x={CX} y={REF_Y + 7} textAnchor="middle"
+          fill={pitch !== null ? REF : '#444'} fontSize={20}
+          fontWeight="bold" fontFamily="monospace">
+          {pitch !== null ? (absPitch === 0 ? '—' : `${pitchDir}${absPitch}°`) : '--'}
+        </text>
 
         {/* Roll arc and ticks removed */}
 
@@ -142,16 +147,6 @@ export default function LeanAngle() {
           fontWeight="bold" fontFamily="sans-serif">
           {hasData ? (absLean > 0 ? `${absLean}° ${side}` : '0°') : '--'}
         </text>
-        {pitch !== null && absPitch > 0 && (
-          <>
-            <rect x={CX - 22} y={79} width={44} height={13}
-              fill="rgba(0,0,0,0.65)" rx={4} />
-            <text x={CX} y={89} textAnchor="middle"
-              fill="rgba(255,200,80,0.9)" fontSize={11} fontFamily="sans-serif">
-              {pitchDir}{absPitch}°
-            </text>
-          </>
-        )}
 
         {/* G-METER — side-by-side: G large left, MAX smaller top-right */}
         <g>

@@ -20,10 +20,12 @@ function tempColor(temp: number): string {
 
 export default function CHTGauge({ side }: CHTGaugeProps) {
   const temp        = useCarplayStore((s) => (side === 'L' ? s.chtLeft : s.chtRight))
-  const activeGraph = useStatusStore(s => s.activeGraph)
-  const setActive   = useStatusStore(s => s.setActiveGraph)
-  const metricKey   = side === 'L' ? 'chtLeft' : 'chtRight'
-  const tap = () => setActive(activeGraph === metricKey ? null : metricKey as 'chtLeft' | 'chtRight')
+  const setActive = useStatusStore(s => s.setActiveGraph)
+  const metricKey = side === 'L' ? 'chtLeft' : 'chtRight'
+  const tap = () => {
+    const cur = useStatusStore.getState().activeGraph
+    setActive(cur === metricKey ? null : metricKey as 'chtLeft' | 'chtRight')
+  }
 
   const hasData = temp !== null
   const clamped = Math.max(0, Math.min(MAX_TEMP, temp ?? 0))

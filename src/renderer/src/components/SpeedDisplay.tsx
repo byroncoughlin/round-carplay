@@ -13,10 +13,9 @@ export default function SpeedDisplay() {
   const speedKmh    = useCarplayStore((s) => s.gpsSpeed)
   const heading     = useCarplayStore((s) => s.heading)
   const ambientC    = useCarplayStore((s) => s.ambientTemp)
-  const activeGraph = useStatusStore((s) => s.activeGraph)
-  const setActive   = useStatusStore((s) => s.setActiveGraph)
+  const setActive = useStatusStore((s) => s.setActiveGraph)
   const tap = (key: 'speed' | 'heading' | 'ambientTemp') =>
-    setActive(activeGraph === key ? null : key)
+    setActive(useStatusStore.getState().activeGraph === key ? null : key)
 
   const speed    = speedKmh !== null ? Math.round(speedKmh * 0.621371) : null
   const cardinal = heading  !== null ? toCardinal(heading) : null

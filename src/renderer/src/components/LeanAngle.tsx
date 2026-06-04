@@ -19,10 +19,11 @@ export default function LeanAngle() {
   const altM      = useCarplayStore(s => s.altitude)
   const gx        = useCarplayStore(s => s.gForceX)
   const gy        = useCarplayStore(s => s.gForceY)
-  const activeGraph = useStatusStore(s => s.activeGraph)
-  const setActive   = useStatusStore(s => s.setActiveGraph)
+  const setActive = useStatusStore(s => s.setActiveGraph)
+  // Read activeGraph imperatively at click time — no subscription so this
+  // component never re-renders just because a graph opens/closes elsewhere.
   const tap = (key: 'altitude' | 'leanAngle' | 'gForce' | 'pitchAngle') =>
-    setActive(activeGraph === key ? null : key)
+    setActive(useStatusStore.getState().activeGraph === key ? null : key)
 
   const leanVal  = lean  ?? 0
   const pitchVal = pitch ?? 0

@@ -18,6 +18,15 @@ Euler angles (BNO055 NDOF mode):
 Linear acceleration is gravity-compensated m/s², divided by 9.81 for G.
 
 Systemd service: ~/.config/systemd/user/imu.service
+
+I2C note: set dtparam=i2c_arm_baudrate=10000 in /boot/firmware/config.txt
+to slow the clock for BNO055 clock-stretching compatibility.
+
+BNO055 quirk: when the internal fusion hasn't produced a new result yet,
+it returns 0xFFFF in the Euler angle registers, which the Adafruit library
+decodes as -0.0625°.  Both roll AND pitch return this exact value at the
+same time.  We detect and skip these frames so the UI holds its last
+good reading rather than flickering to zero.
 """
 
 import time
@@ -26,8 +35,12 @@ import busio
 import adafruit_bno055
 import socketio
 
-INTERVAL   = 0.1   # 10Hz update rate
+INTERVAL = 0.1    # 10 Hz update rate
 SERVER_URL = 'http://localhost:4000'
+
+# BNO055 "data not ready" sentinel value in the Adafruit library
+# (0xFFFF as a signed 16-bit int * 1/16 deg/LSB = -0.0625°)
+BNO_SENTINEL = -0.0625
 
 sio = socketio.Client(reconnection=True, reconnection_attempts=0)
 
@@ -38,6 +51,10 @@ def connect():
 @sio.event
 def disconnect():
     print('[imu] Disconnected — will reconnect')
+
+def is_sentinel(v):
+    """Return True if value matches the BNO055 not-ready sentinel."""
+    return v is None or abs(v - BNO_SENTINEL) < 0.001
 
 def main():
     i2c    = busio.I2C(board.SCL, board.SDA)
@@ -52,7 +69,6 @@ def main():
                 euler = sensor.euler
                 accel = sensor.linear_acceleration
 
-                # Guard against None at the tuple level
                 if euler is None or accel is None:
                     time.sleep(INTERVAL)
                     continue
@@ -60,11 +76,10 @@ def main():
                 lean  = euler[1]
                 pitch = euler[2]
 
-                # BNO055 can return a valid tuple but with None inside individual
-                # slots during NDOF fusion transitions / calibration dropouts.
-                # Skip the emit entirely rather than falling back to 0.0 — the UI
-                # will hold the last good reading instead of flickering to zero.
-                if lean is None or pitch is None:
+                # Skip frames where the BNO055 returns its not-ready sentinel.
+                # On a Raspberry Pi the I2C timing causes this on ~40% of reads;
+                # without skipping, the display flickers to zero each time.
+                if is_sentinel(lean) or is_sentinel(pitch):
                     time.sleep(INTERVAL)
                     continue
 

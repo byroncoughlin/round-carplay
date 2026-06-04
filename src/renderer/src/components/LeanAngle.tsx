@@ -19,7 +19,10 @@ export default function LeanAngle() {
   const altM      = useCarplayStore(s => s.altitude)
   const gx        = useCarplayStore(s => s.gForceX)
   const gy        = useCarplayStore(s => s.gForceY)
-  const setActive = useStatusStore(s => s.setActiveGraph)
+  const activeGraph = useStatusStore(s => s.activeGraph)
+  const setActive   = useStatusStore(s => s.setActiveGraph)
+  const tap = (key: 'altitude' | 'leanAngle' | 'gForce' | 'pitchAngle') =>
+    setActive(activeGraph === key ? null : key)
 
   const leanVal  = lean  ?? 0
   const pitchVal = pitch ?? 0
@@ -110,7 +113,7 @@ export default function LeanAngle() {
         <line x1={CX + 72} y1={REF_Y} x2={CX + 72} y2={REF_Y + 9}
           stroke={REF} strokeWidth={3.5} strokeLinecap="round" />
         {/* Center pitch badge — replaces circle, sits on gold line */}
-        <g style={{ cursor: 'pointer' }} onClick={() => setActive('pitchAngle')}>
+        <g style={{ cursor: 'pointer' }} onClick={() => tap('pitchAngle')}>
           <rect x={CX - 30} y={REF_Y - 13} width={60} height={26}
             fill="rgba(0,0,0,0.88)" rx={8} />
           <text x={CX} y={REF_Y + 7} textAnchor="middle"
@@ -127,7 +130,7 @@ export default function LeanAngle() {
         <rect x={0} y={66} width={W} height={H - 66} fill="rgba(0,0,0,0.25)" />
 
         {/* ALT — simplified: label + big number + unit */}
-        <g style={{ cursor: 'pointer' }} onClick={() => setActive('altitude')}>
+        <g style={{ cursor: 'pointer' }} onClick={() => tap('altitude')}>
           <rect x={84} y={6} width={78} height={58} fill="rgba(0,0,0,0.72)" rx={5} />
           <text x={123} y={22} textAnchor="middle"
             fill="rgba(255,255,255,0.75)" fontSize={12}
@@ -141,7 +144,7 @@ export default function LeanAngle() {
         </g>
 
         {/* Lean center — arch shape: rounded top, bottom clipped flat by SVG viewport */}
-        <g style={{ cursor: 'pointer' }} onClick={() => setActive('leanAngle')}>
+        <g style={{ cursor: 'pointer' }} onClick={() => tap('leanAngle')}>
           <rect x={CX - 40} y={88} width={80} height={40}
             fill="rgba(0,0,0,0.88)"
             stroke="rgba(255,255,255,0.07)" strokeWidth={0.75}
@@ -154,7 +157,7 @@ export default function LeanAngle() {
         </g>
 
         {/* G-METER — side-by-side: G large left, MAX smaller top-right */}
-        <g style={{ cursor: 'pointer' }} onClick={() => setActive('gForce')}>
+        <g style={{ cursor: 'pointer' }} onClick={() => tap('gForce')}>
           {/* "G" label + box */}
           <text x={445} y={11} textAnchor="middle"
             fill="rgba(255,255,255,0.75)" fontSize={12}

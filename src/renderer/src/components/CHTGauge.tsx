@@ -19,9 +19,11 @@ function tempColor(temp: number): string {
 }
 
 export default function CHTGauge({ side }: CHTGaugeProps) {
-  const temp      = useCarplayStore((s) => (side === 'L' ? s.chtLeft : s.chtRight))
-  const setActive = useStatusStore(s => s.setActiveGraph)
-  const metricKey = side === 'L' ? 'chtLeft' : 'chtRight'
+  const temp        = useCarplayStore((s) => (side === 'L' ? s.chtLeft : s.chtRight))
+  const activeGraph = useStatusStore(s => s.activeGraph)
+  const setActive   = useStatusStore(s => s.setActiveGraph)
+  const metricKey   = side === 'L' ? 'chtLeft' : 'chtRight'
+  const tap = () => setActive(activeGraph === metricKey ? null : metricKey as 'chtLeft' | 'chtRight')
 
   const hasData = temp !== null
   const clamped = Math.max(0, Math.min(MAX_TEMP, temp ?? 0))
@@ -35,7 +37,7 @@ export default function CHTGauge({ side }: CHTGaugeProps) {
   return (
     <div
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-      onClick={() => setActive(metricKey as 'chtLeft' | 'chtRight')}
+      onClick={tap}
     >
       <svg
         viewBox={`0 0 ${VW} ${VH}`}

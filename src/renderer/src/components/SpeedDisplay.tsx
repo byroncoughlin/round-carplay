@@ -16,7 +16,10 @@ export default function SpeedDisplay() {
   const speedKmh    = useCarplayStore((s) => s.gpsSpeed)
   const heading     = useCarplayStore((s) => s.heading)
   const ambientC    = useCarplayStore((s) => s.ambientTemp)
+  const activeGraph = useStatusStore((s) => s.activeGraph)
   const setActive   = useStatusStore((s) => s.setActiveGraph)
+  const tap = (key: 'speed' | 'heading' | 'ambientTemp') =>
+    setActive(activeGraph === key ? null : key)
 
   const speed    = speedKmh !== null ? Math.round(speedKmh * 0.621371) : null
   const cardinal = heading  !== null ? toCardinal(heading) : null
@@ -29,7 +32,7 @@ export default function SpeedDisplay() {
       <div
         style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', ...tapStyle }}
-        onClick={() => setActive('speed')}
+        onClick={() => tap('speed')}
       >
         <span style={{
           fontSize: 90, fontWeight: 800,
@@ -47,7 +50,7 @@ export default function SpeedDisplay() {
       <div
         style={{ position: 'absolute', bottom: 1, left: '17%',
           display: 'flex', flexDirection: 'column', alignItems: 'center', ...tapStyle }}
-        onClick={() => setActive('heading')}
+        onClick={() => tap('heading')}
       >
         <span style={{ fontSize: 32, fontWeight: 700, color: cardinal ? 'white' : '#333', lineHeight: 1 }}>
           {cardinal ?? '--'}
@@ -61,7 +64,7 @@ export default function SpeedDisplay() {
       <div
         style={{ position: 'absolute', bottom: 1, right: '17%',
           display: 'flex', flexDirection: 'column', alignItems: 'center', ...tapStyle }}
-        onClick={() => setActive('ambientTemp')}
+        onClick={() => tap('ambientTemp')}
       >
         <span style={{ fontSize: 32, fontWeight: 700, color: tempF !== null ? 'white' : '#333', lineHeight: 1 }}>
           {tempF !== null ? `${tempF}°` : '--'}

@@ -31,6 +31,14 @@ export class Socket extends EventEmitter {
       socket.on(MessageNames.GetSettings, () => this.sendSettings())
       socket.on(MessageNames.SaveSettings, (settings: ExtraConfig) => this.saveSettings(settings))
       socket.on(MessageNames.Stream, (stream: Stream) => this.emit(MessageNames.Stream, stream))
+
+      // Sensor bridge — forward events from Pi sensor scripts to the renderer
+      socket.on('ambient', (temp: number) => socket.broadcast.emit('ambient', temp))
+      socket.on('gps',     (data: any)    => socket.broadcast.emit('gps', data))
+      socket.on('lean',    (angle: number) => socket.broadcast.emit('lean', angle))
+      socket.on('cht',     (data: any)    => socket.broadcast.emit('cht', data))
+      socket.on('gforce',  (data: any)    => socket.broadcast.emit('gforce', data))
+      socket.on('pitch',   (angle: number) => socket.broadcast.emit('pitch', angle))
     })
   }
 

@@ -93,7 +93,10 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
 
   return (
     <div style={{
-      position: 'absolute', inset: 0,
+      // inset:-1 bleeds the overlay 1px past the center square on every side so
+      // it always covers the subpixel seam left by the square's fractional
+      // (translate -50%) centering — otherwise a ~1px sliver of background shows.
+      position: 'absolute', inset: -1,
       background: 'rgba(0,0,0,0.97)',
       zIndex: 300,
       display: 'flex',

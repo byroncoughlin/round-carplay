@@ -2,14 +2,15 @@
 """
 cht_temp.py — MAX31855 cylinder head temperature reader
 Left cylinder:  SPI bus 0, CE0 (Pi Pin 24, GPIO8)
-Right cylinder: SPI bus 0, CE1 (Pi Pin 26, GPIO7) — uncomment when second board arrives
+Right cylinder: SPI bus 0, CE1 (Pi Pin 26, GPIO7)
 
 Hardware (per board):
-  VIN → Pi Pin 17 (3.3V)   [left board; right board shares via daisy-chain]
-  GND → Pi Pin 9  (GND)    [or any available GND pin]
-  DO  → Pi Pin 21 (GPIO9,  SPI MISO) [shared between both boards]
-  CS  → Pin 24 (CE0) for left, Pin 26 (CE1) for right
-  CLK → Pi Pin 23 (GPIO11, SPI CLK) [shared between both boards]
+  VIN → 5V  (Pin 2 left, Pin 4 right)  — board regulates to 3.3V; DO stays
+                                          3.3V logic, so the Pi is safe
+  GND → any GND (Pin 9 left, Pin 25 right)
+  DO  → Pi Pin 21 (GPIO9,  SPI MISO)  [shared between both boards via splitter]
+  CLK → Pi Pin 23 (GPIO11, SPI CLK)   [shared between both boards via splitter]
+  CS  → Pin 24 (CE0) for left, Pin 26 (CE1) for right  [separate]
 
 Thermocouple wiring: red → red terminal, yellow → yellow terminal (ANSI K-type standard).
 SPI mode 0, 250kHz.
@@ -38,10 +39,26 @@ def read_max31855(bus, device):
     val = (raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8) | raw[3]
     if val & 0x7:
         return None  # fault (OC, SCG, or SCV)
+
+    # Sanity check via the chip's internal cold-junction temperature.
+    # A working MAX31855 always reports its own die temp (~ -40..150 C),
+    # independent of the thermocouple.  A dead / unpowered / disconnected
+    # board floats the SPI bus and returns impossible values (e.g. -128 C
+    # with no fault bits set) — reject those so the gauge shows '--'
+    # instead of a garbage reading.
+    internal_raw = (val >> 4) & 0xFFF
+    if internal_raw & 0x800:
+        internal_raw -= 0x1000
+    if not (-40.0 <= internal_raw * 0.0625 <= 150.0):
+        return None
+
     tc_raw = (val >> 18) & 0x3FFF
     if tc_raw & 0x2000:
         tc_raw -= 0x4000
-    return round(tc_raw * 0.25, 2)
+    tc_c = tc_raw * 0.25
+    if not (-50.0 <= tc_c <= 1100.0):  # outside any real K-type CHT range
+        return None
+    return round(tc_c, 2)
 
 @sio.event
 def connect():
@@ -56,9 +73,8 @@ def main():
         try:
             sio.connect(SERVER_URL)
             while True:
-                left  = read_max31855(0, 0)
-                # right = read_max31855(0, 1)  # uncomment when second board arrives
-                right = None
+                left  = read_max31855(0, 0)   # CE0
+                right = read_max31855(0, 1)   # CE1
 
                 sio.emit('cht', {'left': left, 'right': right})
                 print(f'[cht] L={left if left is not None else "--"}°C  R={"--" if right is None else right}°C')

@@ -7,6 +7,10 @@ export type ExtraConfig = DongleConfig & {
   bindings: KeyBindings,
   audioVolume: number;
   navVolume: number;
+  // IMU tilt calibration — raw lean/pitch captured while the bike is held
+  // level; subtracted from live readings so a non-level mount reads zero.
+  leanOffset: number;
+  pitchOffset: number;
 }
 
 export interface KeyBindings {

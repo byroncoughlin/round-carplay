@@ -91,6 +91,26 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
     }
   }
 
+  // Capture the current raw lean/pitch as the "level" zero offsets.
+  const calibrateTilt = () => {
+    const { leanAngle, pitchAngle } = useCarplayStore.getState()
+    const lean  = leanAngle  ?? 0
+    const pitch = pitchAngle ?? 0
+    const updated = { ...activeSettings, leanOffset: lean, pitchOffset: pitch }
+    setActiveSettings(updated)
+    saveSettings(updated)
+    setResetMessage(`Tilt zeroed — lean ${lean.toFixed(1)}°, pitch ${pitch.toFixed(1)}°`)
+    setCloseCountdown(3)
+  }
+
+  const resetTilt = () => {
+    const updated = { ...activeSettings, leanOffset: 0, pitchOffset: 0 }
+    setActiveSettings(updated)
+    saveSettings(updated)
+    setResetMessage('Tilt calibration reset')
+    setCloseCountdown(3)
+  }
+
   const handleSave = async () => {
     setIsResetting(true)
     setCloseCountdown(3)
@@ -243,6 +263,21 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
             </RadioGroup>
           </Grid>
         </Grid>
+
+        <Rule />
+
+        {/* ── TILT CALIBRATION ── */}
+        <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>TILT CALIBRATION</FormLabel>
+        <Stack direction="row" gap={1} alignItems="center" sx={{ mt: 0.5 }}>
+          <Button size="small" variant="outlined" onClick={calibrateTilt}>SET LEVEL</Button>
+          <Button size="small" variant="outlined" color="warning" onClick={resetTilt}>RESET</Button>
+          <Typography variant="caption" sx={{ fontSize: 10, color: 'text.secondary', ml: 0.5 }}>
+            offset&nbsp; lean {(activeSettings.leanOffset ?? 0).toFixed(1)}°&nbsp;·&nbsp;pitch {(activeSettings.pitchOffset ?? 0).toFixed(1)}°
+          </Typography>
+        </Stack>
+        <Typography sx={{ fontSize: 9, opacity: 0.55, mt: 0.25 }}>
+          Hold the bike upright &amp; level, then tap SET LEVEL to zero the lean/pitch readout.
+        </Typography>
 
         {/* ── CAMERA (if present) ── */}
         {cameras.length > 0 && (

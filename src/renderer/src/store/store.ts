@@ -218,7 +218,10 @@ socket.on('gps', (data: { speed: number; heading: number; altitude: number }) =>
 })
 socket.on('lean', (angle: number) => {
   useCarplayStore.setState({ leanAngle: angle })
-  setTimeout(() => log('leanAngle', angle), 0)
+  setTimeout(() => {
+    const off = useCarplayStore.getState().settings?.leanOffset ?? 0
+    log('leanAngle', angle - off)   // log calibrated value (matches display)
+  }, 0)
 })
 socket.on('cht', (data: { left: number | null; right: number | null }) => {
   useCarplayStore.setState({ chtLeft: data.left, chtRight: data.right })
@@ -235,5 +238,8 @@ socket.on('gforce', (data: { x: number; y: number }) => {
 })
 socket.on('pitch', (angle: number) => {
   useCarplayStore.setState({ pitchAngle: angle })
-  setTimeout(() => log('pitchAngle', angle), 0)
+  setTimeout(() => {
+    const off = useCarplayStore.getState().settings?.pitchOffset ?? 0
+    log('pitchAngle', angle - off)   // log calibrated value (matches display)
+  }, 0)
 })

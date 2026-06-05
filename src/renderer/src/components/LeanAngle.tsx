@@ -19,14 +19,18 @@ export default function LeanAngle() {
   const altM      = useCarplayStore(s => s.altitude)
   const gx        = useCarplayStore(s => s.gForceX)
   const gy        = useCarplayStore(s => s.gForceY)
+  // Tilt calibration offsets (raw lean/pitch captured while the bike was held
+  // level), persisted in settings; subtracted so a non-level mount reads zero.
+  const leanOffset  = useCarplayStore(s => s.settings?.leanOffset ?? 0)
+  const pitchOffset = useCarplayStore(s => s.settings?.pitchOffset ?? 0)
   const setActive = useStatusStore(s => s.setActiveGraph)
   // Read activeGraph imperatively at click time — no subscription so this
   // component never re-renders just because a graph opens/closes elsewhere.
   const tap = (key: 'altitude' | 'leanAngle' | 'gForce' | 'pitchAngle') =>
     setActive(useStatusStore.getState().activeGraph === key ? null : key)
 
-  const leanVal  = lean  ?? 0
-  const pitchVal = pitch ?? 0
+  const leanVal  = lean  !== null ? lean  - leanOffset  : 0
+  const pitchVal = pitch !== null ? pitch - pitchOffset : 0
   const hasData  = lean !== null
 
   const absLean  = Math.abs(Math.round(leanVal))

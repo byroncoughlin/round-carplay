@@ -151,6 +151,8 @@ function loadConfig(): ExtraConfig {
     nightMode: true,
     audioVolume: 1.0,
     navVolume: 0.5,
+    leanOffset: 0,
+    pitchOffset: 0,
     bindings: { ...DEFAULT_BINDINGS },
     ...fileConfig
   } as ExtraConfig

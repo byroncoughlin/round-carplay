@@ -174,6 +174,11 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
   const visMin  = vals.length ? Math.min(...vals) : null
   const visMax  = vals.length ? Math.max(...vals) : null
 
+  // Risk-band (traffic-light) coloring for metrics that define zones (Pi temp).
+  const zones      = cfg.zones
+  const zoneOf     = (v: number) => zones?.find(z => v <= z.max) ?? zones?.[zones.length - 1]
+  const valueColor = zones && current !== null ? (zoneOf(current)?.color ?? cfg.color) : 'white'
+
   const onPtrDown = (e: React.PointerEvent<SVGSVGElement>) => {
     panRef.current = { active: true, startX: e.clientX, startOff: viewOffset }
     ;(e.target as Element).setPointerCapture(e.pointerId)
@@ -237,7 +242,7 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
-            fontSize: valSize, fontWeight: 900, color: 'white',
+            fontSize: valSize, fontWeight: 900, color: valueColor,
             lineHeight: 0.88, fontFamily: 'monospace', letterSpacing: -3,
           }}>
             {current !== null ? cfg.fmtVal(current) : '--'}
@@ -272,6 +277,11 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
             <stop offset="0%"   stopColor={cfg.color} stopOpacity="0.3" />
             <stop offset="100%" stopColor={cfg.color} stopOpacity="0.02" />
           </linearGradient>
+          {zones && areaPath && (
+            <clipPath id={`mg-area-${metricKey}`}>
+              <path d={areaPath} />
+            </clipPath>
+          )}
         </defs>
 
         <rect x={CX} y={CY} width={CW} height={CH} fill="#080808" rx={4} />
@@ -299,9 +309,42 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
           </g>
         ))}
 
-        {areaPath && (
+        {/* Area fill — risk-band coloring when zones defined, else flat gradient */}
+        {areaPath && zones && (
+          <g clipPath={`url(#mg-clip-${metricKey})`}>
+            <g clipPath={`url(#mg-area-${metricKey})`}>
+              {zones.map((z, i) => {
+                const lo   = i === 0 ? yMin : zones[i - 1].max   // band spans (lo, max]
+                const vTop = Math.min(z.max, yMax)
+                const vBot = Math.max(lo, yMin)
+                if (vTop <= vBot) return null                    // band not in view
+                const yT = yFor(vTop)
+                return <rect key={i} x={CX} width={CW} y={yT} height={yFor(vBot) - yT}
+                  fill={z.color} opacity={0.3} />
+              })}
+            </g>
+          </g>
+        )}
+        {areaPath && !zones && (
           <path d={areaPath} fill={`url(#mg-grad-${metricKey})`} clipPath={`url(#mg-clip-${metricKey})`} />
         )}
+
+        {/* Threshold guide lines at each zone boundary (e.g. 70°, 80°) */}
+        {zones && zones.slice(0, -1).map((z, i) => {
+          if (z.max <= yMin || z.max >= yMax) return null
+          const y = yFor(z.max)
+          return (
+            <g key={`thr-${i}`}>
+              <line x1={CX} y1={y} x2={CX + CW} y2={y}
+                stroke={z.color} strokeWidth={1} strokeDasharray="4 4" opacity={0.55} />
+              <text x={CX + CW - 4} y={y - 4} textAnchor="end"
+                fill={z.color} fontSize={9} fontFamily="monospace" opacity={0.85}>
+                {zones[i + 1].label} {cfg.fmtVal(z.max)}°
+              </text>
+            </g>
+          )
+        })}
+
         {linePath && (
           <path d={linePath} fill="none" stroke={cfg.color} strokeWidth={2}
             strokeLinejoin="round" strokeLinecap="round" clipPath={`url(#mg-clip-${metricKey})`} />

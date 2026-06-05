@@ -9,6 +9,12 @@ export interface DataPoint {
   val: number
 }
 
+export interface MetricZone {
+  max: number    // upper bound (inclusive) of this risk band, in the metric's unit
+  color: string  // fill color for the area-under-line while it sits in this band
+  label?: string // short tag drawn at the band's lower threshold line
+}
+
 export interface MetricConfig {
   label: string
   unit: string
@@ -18,6 +24,10 @@ export interface MetricConfig {
   // chart still shows at least this range (centered on the data) so a steady
   // reading looks appropriately flat instead of zooming in on sensor noise.
   minRange: number
+  // Optional risk bands (ascending by max, last = Infinity). When set, the
+  // area under the line is colored per-band by value (traffic-light style) and
+  // the current reading is tinted to match — e.g. Pi CPU temp throttle zones.
+  zones?: MetricZone[]
 }
 
 export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
@@ -30,7 +40,14 @@ export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
   gForce:      { label: 'G-FORCE',   unit: 'G',   color: '#ffca28', minRange: 0.5, fmtVal: v => v.toFixed(2) },
   leanAngle:   { label: 'LEAN',      unit: '°',   color: '#ffd700', minRange: 30,  fmtVal: v => String(Math.round(v)) },
   pitchAngle:  { label: 'PITCH',     unit: '°',   color: '#80cbc4', minRange: 20,  fmtVal: v => String(Math.round(v)) },
-  piTemp:      { label: 'PI CPU',    unit: '°C',  color: '#4dd0e1', minRange: 15,  fmtVal: v => String(Math.round(v)) },
+  piTemp:      { label: 'PI CPU',    unit: '°C',  color: '#4dd0e1', minRange: 15,  fmtVal: v => String(Math.round(v)),
+    // Pi 5 thermals: comfortable < 70 °C, warm 70–80 °C, soft-throttle ≥ 80 °C.
+    zones: [
+      { max: 70,       color: '#43d17a' },                      // healthy  (green)
+      { max: 80,       color: '#ffb300', label: 'WARM'     },   // warm     (amber)
+      { max: Infinity, color: '#ff5252', label: 'THROTTLE' },   // throttle (red)
+    ],
+  },
 }
 
 const MAX_AGE_MS  = 8 * 60 * 60 * 1000  // 8 hours

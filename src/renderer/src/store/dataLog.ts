@@ -14,18 +14,22 @@ export interface MetricConfig {
   unit: string
   color: string
   fmtVal: (v: number) => string
+  // Minimum y-axis span. If the visible data varies by less than this, the
+  // chart still shows at least this range (centered on the data) so a steady
+  // reading looks appropriately flat instead of zooming in on sensor noise.
+  minRange: number
 }
 
 export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
-  speed:       { label: 'SPEED',     unit: 'mph', color: '#4fc3f7', fmtVal: v => String(Math.round(v)) },
-  heading:     { label: 'HEADING',   unit: '°',   color: '#81c784', fmtVal: v => String(Math.round(v)) },
-  ambientTemp: { label: 'AMBIENT',   unit: '°F',  color: '#fff176', fmtVal: v => String(Math.round(v)) },
-  chtLeft:     { label: 'CHT LEFT',  unit: '°C',  color: '#ff8a65', fmtVal: v => String(Math.round(v)) },
-  chtRight:    { label: 'CHT RIGHT', unit: '°C',  color: '#ff5252', fmtVal: v => String(Math.round(v)) },
-  altitude:    { label: 'ALTITUDE',  unit: 'ft',  color: '#ce93d8', fmtVal: v => Math.round(v).toLocaleString() },
-  gForce:      { label: 'G-FORCE',   unit: 'G',   color: '#ffca28', fmtVal: v => v.toFixed(2) },
-  leanAngle:   { label: 'LEAN',      unit: '°',   color: '#ffd700', fmtVal: v => String(Math.round(v)) },
-  pitchAngle:  { label: 'PITCH',     unit: '°',   color: '#80cbc4', fmtVal: v => String(Math.round(v)) },
+  speed:       { label: 'SPEED',     unit: 'mph', color: '#4fc3f7', minRange: 20,  fmtVal: v => String(Math.round(v)) },
+  heading:     { label: 'HEADING',   unit: '°',   color: '#81c784', minRange: 45,  fmtVal: v => String(Math.round(v)) },
+  ambientTemp: { label: 'AMBIENT',   unit: '°F',  color: '#fff176', minRange: 10,  fmtVal: v => String(Math.round(v)) },
+  chtLeft:     { label: 'CHT LEFT',  unit: '°C',  color: '#ff8a65', minRange: 30,  fmtVal: v => String(Math.round(v)) },
+  chtRight:    { label: 'CHT RIGHT', unit: '°C',  color: '#ff5252', minRange: 30,  fmtVal: v => String(Math.round(v)) },
+  altitude:    { label: 'ALTITUDE',  unit: 'ft',  color: '#ce93d8', minRange: 100, fmtVal: v => Math.round(v).toLocaleString() },
+  gForce:      { label: 'G-FORCE',   unit: 'G',   color: '#ffca28', minRange: 0.5, fmtVal: v => v.toFixed(2) },
+  leanAngle:   { label: 'LEAN',      unit: '°',   color: '#ffd700', minRange: 30,  fmtVal: v => String(Math.round(v)) },
+  pitchAngle:  { label: 'PITCH',     unit: '°',   color: '#80cbc4', minRange: 20,  fmtVal: v => String(Math.round(v)) },
 }
 
 const MAX_AGE_MS  = 8 * 60 * 60 * 1000  // 8 hours

@@ -43,9 +43,13 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
   const vals   = visible.map(p => p.val)
   const rawMin = vals.length ? Math.min(...vals) : 0
   const rawMax = vals.length ? Math.max(...vals) : 1
-  const pad    = (rawMax - rawMin) * 0.15 || 5
-  const yMin   = rawMin - pad
-  const yMax   = rawMax + pad
+  // Enforce a per-metric minimum span (centered on the data) so a steady
+  // reading shows as flat instead of zooming into sensor noise.
+  const center = (rawMax + rawMin) / 2
+  const span   = Math.max(rawMax - rawMin, cfg.minRange)
+  const pad    = span * 0.15
+  const yMin   = center - span / 2 - pad
+  const yMax   = center + span / 2 + pad
 
   const xFor = (ts: number) => CX + ((ts - windowStart) / WINDOW_MS) * CW
   const yFor = (v: number)  => CY + CH - ((v - yMin) / (yMax - yMin)) * CH

@@ -37,6 +37,13 @@ def read_max31855(bus, device):
     raw = spi.readbytes(4)
     spi.close()
     val = (raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8) | raw[3]
+
+    # No board present: a disconnected / unpowered MAX31855 leaves the SPI
+    # MISO line floating, which reads as all-zeros or all-ones. Neither is a
+    # real frame, so report '--' rather than a bogus 0 C.
+    if val == 0x00000000 or val == 0xFFFFFFFF:
+        return None
+
     if val & 0x7:
         return None  # fault (OC, SCG, or SCV)
 

@@ -25,6 +25,7 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
   const [nowMs,        setNowMs]        = useState(() => Date.now())
   const [viewOffset,   setViewOffset]   = useState(0)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [confirmQuit,  setConfirmQuit]  = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 1000)
@@ -34,6 +35,20 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
   const panRef = useRef<{ active: boolean; startX: number; startOff: number }>({
     active: false, startX: 0, startOff: 0,
   })
+
+  // Close button: short tap closes the graph; press-and-hold opens a quit prompt
+  // (the only way to quit the app when only the graph buttons are reachable).
+  const holdRef = useRef<{ t: ReturnType<typeof setTimeout> | null; fired: boolean }>({ t: null, fired: false })
+  const closeHoldStart = () => {
+    holdRef.current.fired = false
+    holdRef.current.t = setTimeout(() => { holdRef.current.fired = true; setConfirmQuit(true) }, 800)
+  }
+  const closeHoldEnd = () => {
+    if (holdRef.current.t) clearTimeout(holdRef.current.t)
+    if (!holdRef.current.fired) onClose()   // it was a tap → close the graph
+    holdRef.current.fired = false
+  }
+  const closeHoldCancel = () => { if (holdRef.current.t) clearTimeout(holdRef.current.t) }
 
   const windowEnd   = nowMs - viewOffset
   const windowStart = windowEnd - WINDOW_MS
@@ -141,7 +156,13 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
               RESET
             </button>
           )}
-          <button onClick={onClose} style={closeBtn}>✕</button>
+          <button
+            onPointerDown={closeHoldStart}
+            onPointerUp={closeHoldEnd}
+            onPointerLeave={closeHoldCancel}
+            style={closeBtn}
+            title="tap to close · hold to quit app"
+          >✕</button>
         </div>
       </div>
 
@@ -250,6 +271,27 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
           )
         })()}
       </svg>
+
+      {/* Hold-✕-to-quit confirmation */}
+      {confirmQuit && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 500,
+          background: 'rgba(0,0,0,0.94)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}>
+          <div style={{ color: 'white', fontSize: 26, fontWeight: 800, fontFamily: 'sans-serif', letterSpacing: 0.5 }}>
+            Quit motoCarPlay?
+          </div>
+          <div style={{ color: '#888', fontSize: 12, fontFamily: 'monospace', marginBottom: 18 }}>
+            this closes the dashboard app
+          </div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <button onClick={() => setConfirmQuit(false)} style={actionBtn('#2a2a2a', '#ccc')}>CANCEL</button>
+            <button onClick={() => window.carplay.quit()} style={actionBtn('#5c1010', '#ff6b6b')}>QUIT</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

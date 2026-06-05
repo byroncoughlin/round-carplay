@@ -77,7 +77,7 @@ export default function HomeView() {
           width: '100%', height: 'calc(min(100vw, 100vh) * 0.70625)',
           zIndex: 1300, background: '#000', cursor: 'pointer',
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          paddingBottom: 64,   // nudge the content a touch above true center
+          paddingBottom: 120,   // nudge the content above true center
           opacity: showIdle ? 1 : 0,
           transform: showIdle ? 'scale(1)' : 'scale(0.82)',
           transformOrigin: 'center center',

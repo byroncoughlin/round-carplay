@@ -26,3 +26,20 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <Root />
 );
 
+// Fade out the boot splash once the dashboard has mounted and painted.
+// A short minimum keeps the logo from flashing by on a fast boot.
+const splash = document.getElementById('splash');
+if (splash) {
+  const MIN_SHOW_MS = 1200;
+  const start = performance.now();
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const wait = Math.max(0, MIN_SHOW_MS - (performance.now() - start));
+      window.setTimeout(() => {
+        splash.classList.add('hide');
+        window.setTimeout(() => splash.remove(), 700);
+      }, wait);
+    })
+  );
+}
+

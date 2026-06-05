@@ -11,6 +11,18 @@ const commonLayout = {
     overflow: 'hidden',
     backgroundColor: 'inherit',
   },
+  // Touchscreen: never let a finger drag select/highlight text or flash a
+  // tap highlight. Real text inputs are re-enabled below so Settings works.
+  '*': {
+    WebkitUserSelect: 'none',
+    userSelect: 'none',
+    WebkitTouchCallout: 'none',
+    WebkitTapHighlightColor: 'transparent',
+  },
+  'input, textarea': {
+    WebkitUserSelect: 'text',
+    userSelect: 'text',
+  },
   '::-webkit-scrollbar': { display: 'none' },
   '.App': { backgroundColor: 'inherit' },
   '.app-wrapper, #main, #videoContainer, .PhoneContent, .InfoContent, .CarplayContent': {

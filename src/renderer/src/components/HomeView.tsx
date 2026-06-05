@@ -73,6 +73,7 @@ export default function HomeView() {
         width: '100%', height: 'calc(min(100vw, 100vh) * 0.70625)',
         zIndex: 1300, background: '#000',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        paddingBottom: 64,   // nudge the content a touch above true center
         opacity: showIdle ? 1 : 0,
         transform: showIdle ? 'scale(1)' : 'scale(0.82)',
         transformOrigin: 'center center',
@@ -93,10 +94,10 @@ export default function HomeView() {
           style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1 }}>
-            <span style={{ fontSize: 118, fontWeight: 300, color: 'white', letterSpacing: -2, fontFamily: "'Roboto','Helvetica Neue',sans-serif" }}>
+            <span style={{ fontSize: 146, fontWeight: 300, color: 'white', letterSpacing: -3, fontFamily: "'Roboto','Helvetica Neue',sans-serif" }}>
               {h}:{mm}
             </span>
-            <span style={{ fontSize: 28, fontWeight: 500, color: '#888', marginLeft: 10, letterSpacing: 1 }}>{ampm}</span>
+            <span style={{ fontSize: 34, fontWeight: 500, color: '#888', marginLeft: 12, letterSpacing: 1 }}>{ampm}</span>
           </div>
           <div style={{ fontSize: 18, fontWeight: 500, color: '#888', marginTop: 4, letterSpacing: 0.5 }}>{dateStr}</div>
         </div>

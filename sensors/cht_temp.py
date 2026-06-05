@@ -39,6 +39,13 @@ SERVER_URL = 'http://localhost:4000'
 # high-thermal-mass cylinder head. The real fix is the dead board on the bus.
 MEDIAN_WINDOW = 9
 
+# A cylinder head is never meaningfully colder than the board's cold-junction
+# (≈ ambient) — the engine only adds heat. So a thermocouple reading this far
+# *below* the chip's internal temperature is bus corruption, not a real value.
+# This catches the low/zero/negative garbage (worst right after boot) at the
+# source, self-calibrating to ambient instead of using a fixed floor.
+MIN_BELOW_INTERNAL = 10.0   # deg C
+
 sio = socketio.Client(reconnection=True, reconnection_attempts=0)
 
 def _read_raw(bus, device):
@@ -68,7 +75,8 @@ def _read_raw(bus, device):
     internal_raw = (val >> 4) & 0xFFF
     if internal_raw & 0x800:
         internal_raw -= 0x1000
-    if not (-40.0 <= internal_raw * 0.0625 <= 150.0):
+    internal_c = internal_raw * 0.0625
+    if not (-40.0 <= internal_c <= 150.0):
         return None
 
     tc_raw = (val >> 18) & 0x3FFF
@@ -76,6 +84,10 @@ def _read_raw(bus, device):
         tc_raw -= 0x4000
     tc_c = tc_raw * 0.25
     if not (-50.0 <= tc_c <= 1100.0):  # outside any real K-type CHT range
+        return None
+    # Physically impossible to be far colder than ambient (= the cold junction):
+    # reject the bus-corruption lows (worst right after boot — the "hang at 0").
+    if tc_c < internal_c - MIN_BELOW_INTERNAL:
         return None
     return round(tc_c, 2)
 

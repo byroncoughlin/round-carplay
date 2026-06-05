@@ -67,7 +67,8 @@ export default function HomeView() {
     <>
       {/* ── IDLE OVERLAY ── */}
       <div style={{
-        position: 'absolute', inset: 0, zIndex: 1300, background: '#000',
+        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+        zIndex: 1300, background: '#000',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         opacity: showIdle ? 1 : 0,
         transform: showIdle ? 'scale(1)' : 'scale(0.82)',

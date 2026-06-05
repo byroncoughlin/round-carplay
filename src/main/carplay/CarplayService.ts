@@ -20,6 +20,7 @@ import {
 import fs from 'fs'
 import path from 'path'
 import usb from 'usb'
+import { OEM_ICON_PNG } from './oemIcon'
 import NodeMicrophone from './node/NodeMicrophone'
 
 let dongleConnected = false
@@ -224,7 +225,7 @@ export class CarplayService {
       const webUsbDevice = await WebUSBDevice.createInstance(device)
       await webUsbDevice.open()
       await this.driver.initialise(webUsbDevice)
-      await this.driver.start(this.config)
+      await this.driver.start(this.config, OEM_ICON_PNG)
       this.pairTimeout = setTimeout(() => {
         this.driver.send(new SendCommand('wifiPair'))
       }, 15000)

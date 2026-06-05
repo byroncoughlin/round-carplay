@@ -11,8 +11,15 @@ import {
   SendString,
   SendBoxSettings,
   SendCommand,
+  SendFile,
+  SendIconConfig,
   HeartBeat
 } from './messages/sendable.js'
+
+// Optional custom CarPlay OEM icon ("return to head unit" button). Drop a PNG
+// named oem_icon.png next to the AppImage (e.g. /home/<user>/round-carplay/) to
+// use it; if absent the dongle's default icon is shown.
+const OEM_ICON_LABEL = 'R75/6'
 
 const CONFIG_NUMBER = 1
 const MAX_ERROR_COUNT = 5
@@ -156,7 +163,7 @@ export class DongleDriver extends EventEmitter {
     }
   }
 
-  start = async (cfg: DongleConfig) => {
+  start = async (cfg: DongleConfig, oemIcon?: Buffer) => {
     if (!this._device) throw new DriverStateError('initialise() first')
     if (!this._device.opened) return
 
@@ -176,6 +183,19 @@ export class DongleDriver extends EventEmitter {
     ]
     if (cfg.androidWorkMode)
       messages.push(new SendBoolean(cfg.androidWorkMode, FileAddress.ANDROID_WORK_MODE))
+
+    // Custom OEM "return to head unit" icon — sent only if the main process
+    // provided the PNG bytes (read from disk in CarplayService).
+    if (oemIcon && oemIcon.length > 0) {
+      messages.push(
+        new SendFile(oemIcon, FileAddress.OEM_ICON),
+        new SendFile(oemIcon, FileAddress.ICON_120),
+        new SendFile(oemIcon, FileAddress.ICON_180),
+        new SendFile(oemIcon, FileAddress.ICON_250),
+        new SendIconConfig({ label: OEM_ICON_LABEL }),
+      )
+      console.log(`[carplay] sending custom OEM icon (${oemIcon.length} bytes)`)
+    }
 
     await Promise.all(messages.map(this.send))
     setTimeout(() => this.send(new SendCommand('wifiConnect')), 1000)

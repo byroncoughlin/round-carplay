@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Reboot Pi
+Name=Reboot
 Comment=Immediately reboot the Raspberry Pi (no confirmation)
 Exec=/usr/bin/sudo /sbin/reboot
 Icon=/usr/share/icons/Adwaita/symbolic/actions/system-reboot-symbolic.svg

@@ -38,7 +38,7 @@ A reboot is required after editing config.txt.
 
 ---
 
-## 2. Run user services without login (linger)
+## 2. Run user services without login (linger) + group access
 
 The sensor + app services run as the `byron` user session. Enable linger so they
 start at boot without an interactive login:
@@ -46,6 +46,18 @@ start at boot without an interactive login:
 ```bash
 sudo loginctl enable-linger byron
 ```
+
+The `byron` user must be in the device groups the sensors need (these grant
+non-root access to `/dev/ttyAMA0`, `/dev/spidev*`, GPIO, and I2C):
+
+```bash
+sudo usermod -aG dialout,spi,i2c,gpio,plugdev byron   # re-login (or reboot) to apply
+```
+
+- `dialout` → `/dev/ttyAMA0` (BNO055 UART)
+- `spi` → `/dev/spidev0.*` (MAX31855 CHT)
+- `gpio` → 1-Wire / general GPIO
+- `plugdev` → CarPlay USB dongle (see udev rule below)
 
 ---
 
@@ -179,3 +191,29 @@ All sensor scripts emit to the app's Socket.IO server on `localhost:4000`:
 | `ambient` | number (°C) | ambient_temp.py |
 
 The renderer subscribes to these in `src/renderer/src/store/store.ts`.
+
+---
+
+## 8. Misc system settings
+
+**CarPlay dongle USB access** — `/etc/udev/rules.d/52-carplay.rules` lets the app
+talk to the CarPlay adapter without root:
+
+```udev
+SUBSYSTEM=="usb", ATTR{idVendor}=="1314", ATTR{idProduct}=="152*", MODE="0660", GROUP="plugdev"
+```
+
+After creating it: `sudo udevadm control --reload-rules && sudo udevadm trigger`.
+
+**Host / locale:**
+- hostname: `motoCarPlay` (→ `motocarplay.local` over mDNS)
+- timezone: `America/New_York` (`sudo timedatectl set-timezone America/New_York`)
+
+**App runtime config** — `~/.config/round-carplay/config.json` is written by the app's
+own Settings screen (CarPlay resolution 565×565, `kiosk: true`, night mode, audio/mic,
+key bindings, etc.). It's app-managed, not part of OS setup — but back it up if you want
+to preserve tuned values across a reflash.
+
+> The stock `99-rpi-keyboard.rules` udev file is shipped by Raspberry Pi OS — leave it;
+> only `52-carplay.rules` is custom.
+

@@ -3,6 +3,7 @@ import { HashRouter as Router, Route, Routes } from "react-router-dom";
 import Settings from "./components/Settings";
 import Info from "./components/Info";
 import Home from "./components/Home";
+import HomeView from "./components/HomeView";
 import Nav from "./components/Nav";
 import Carplay from './components/Carplay';
 import Camera from './components/Camera';
@@ -193,6 +194,7 @@ function App() {
                   <Camera settings={settings} />
                 </Box>
               </Modal>
+              <HomeView />
               {activeGraph && (
                 <MetricGraph
                   metricKey={activeGraph}

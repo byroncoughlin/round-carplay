@@ -164,6 +164,7 @@ export interface StatusStore {
   cameraFound: boolean
   showDiagnostics: boolean
   activeGraph: MetricKey | null
+  homeMode: boolean   // true = idle clock/home view; false = CarPlay view
 
   setCameraFound: (found: boolean) => void
   setDongleConnected: (connected: boolean) => void
@@ -172,6 +173,7 @@ export interface StatusStore {
   setLights: (lights: boolean) => void
   setShowDiagnostics: (show: boolean) => void
   setActiveGraph: (key: MetricKey | null) => void
+  setHomeMode: (home: boolean) => void
 }
 
 export const useStatusStore = create<StatusStore>((set) => ({
@@ -182,6 +184,7 @@ export const useStatusStore = create<StatusStore>((set) => ({
   cameraFound: false,
   showDiagnostics: false,
   activeGraph: null,
+  homeMode: true,
 
   setCameraFound: (found) => set({ cameraFound: found }),
   setDongleConnected: (connected) => set({ isDongleConnected: connected }),
@@ -190,6 +193,7 @@ export const useStatusStore = create<StatusStore>((set) => ({
   setLights: (lights) => set({ lights }),
   setShowDiagnostics: (show) => set({ showDiagnostics: show }),
   setActiveGraph: (key) => set({ activeGraph: key }),
+  setHomeMode: (home) => set({ homeMode: home }),
 }))
 
 // Socket.IO Event-Handler

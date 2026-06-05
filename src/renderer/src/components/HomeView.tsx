@@ -19,6 +19,7 @@ export default function HomeView() {
   const setHomeMode       = useStatusStore(s => s.setHomeMode)
   const isDongleConnected = useStatusStore(s => s.isDongleConnected)
   const isStreaming       = useStatusStore(s => s.isStreaming)
+  const activeGraph       = useStatusStore(s => s.activeGraph)
 
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -36,7 +37,8 @@ export default function HomeView() {
   }, [isStreaming, setHomeMode])
 
   const onRoot   = pathname === '/'
-  const showIdle = onRoot && homeMode
+  // Hide the idle overlay while a metric graph is open so the graph shows.
+  const showIdle = onRoot && homeMode && !activeGraph
 
   // Clock
   let h = now.getHours()
@@ -66,20 +68,23 @@ export default function HomeView() {
   return (
     <>
       {/* ── IDLE OVERLAY ── */}
-      <div style={{
-        // Definite height (the 565/800 center square) so flex centering has
-        // real space — the parent %-height chain doesn't resolve reliably here.
-        position: 'absolute', top: 0, left: 0,
-        width: '100%', height: 'calc(min(100vw, 100vh) * 0.70625)',
-        zIndex: 1300, background: '#000',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        paddingBottom: 64,   // nudge the content a touch above true center
-        opacity: showIdle ? 1 : 0,
-        transform: showIdle ? 'scale(1)' : 'scale(0.82)',
-        transformOrigin: 'center center',
-        transition: 'opacity 380ms ease, transform 460ms cubic-bezier(0.22,1,0.36,1)',
-        pointerEvents: showIdle ? 'auto' : 'none',
-      }}>
+      <div
+        onClick={() => navigate('/settings')}
+        style={{
+          // Definite height (the 565/800 center square) so flex centering has
+          // real space — the parent %-height chain doesn't resolve reliably here.
+          position: 'absolute', top: 0, left: 0,
+          width: '100%', height: 'calc(min(100vw, 100vh) * 0.70625)',
+          zIndex: 1300, background: '#000', cursor: 'pointer',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          paddingBottom: 64,   // nudge the content a touch above true center
+          opacity: showIdle ? 1 : 0,
+          transform: showIdle ? 'scale(1)' : 'scale(0.82)',
+          transformOrigin: 'center center',
+          transition: 'opacity 380ms ease, transform 460ms cubic-bezier(0.22,1,0.36,1)',
+          pointerEvents: showIdle ? 'auto' : 'none',
+        }}
+      >
         {/* connection chain */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 26 }}>
           {Node('ADAPTER', adapterSub, adapterColor, !isDongleConnected)}
@@ -88,11 +93,8 @@ export default function HomeView() {
           {Node('iPHONE', phoneSub, phoneColor, isDongleConnected && !isStreaming)}
         </div>
 
-        {/* clock + date — tap anywhere on it to open settings */}
-        <div
-          onClick={() => navigate('/settings')}
-          style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-        >
+        {/* clock + date (whole idle view is the settings tap target) */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1 }}>
             <span style={{ fontSize: 146, fontWeight: 300, color: 'white', letterSpacing: -3, fontFamily: "'Roboto','Helvetica Neue',sans-serif" }}>
               {h}:{mm}

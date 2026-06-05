@@ -32,6 +32,7 @@ const Carplay: React.FC<CarplayProps> = ({
 
   // Zustand Store
   const isStreaming = useStatusStore((s) => s.isStreaming)
+  const homeMode = useStatusStore((s) => s.homeMode)
   const setStreaming = useStatusStore((s) => s.setStreaming)
   const setDongleConnected = useStatusStore((s) => s.setDongleConnected)
   const isDongleConnected = useStatusStore((s) => s.isDongleConnected)
@@ -401,7 +402,7 @@ const Carplay: React.FC<CarplayProps> = ({
           : { display: 'none' }
       }
     >
-      {(!isDongleConnected || isLoading) && pathname === '/' && (
+      {(!isDongleConnected || isLoading) && pathname === '/' && !homeMode && (
         <div
           style={{
             position: 'absolute',

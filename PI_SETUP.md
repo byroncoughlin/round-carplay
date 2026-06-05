@@ -219,22 +219,37 @@ to preserve tuned values across a reflash.
 > The stock `99-rpi-keyboard.rules` udev file is shipped by Raspberry Pi OS — leave it;
 > only `52-carplay.rules` is custom.
 
-**Boot logo / desktop wallpaper** — so the boot→app gap shows the R75/6 emblem
-instead of a blank/default desktop. Render the repo's wallpaper SVG to PNG and point
-pcmanfm at it (Pi compositor is **labwc** + **pcmanfm**):
+**All-black boot → BMW splash.** The goal is a clean black screen from power-on until
+the app's BMW roundel splash appears (no rainbow, no Pi logo, no default wallpaper).
 
-```bash
-# from src/renderer/src/assets/airhead-wall.svg in the repo:
-scp src/renderer/src/assets/airhead-wall.svg byron@motocarplay.local:/home/byron/round-carplay/
-ssh byron@motocarplay.local "chromium --headless --no-sandbox --disable-gpu \
-  --screenshot=/home/byron/round-carplay/airhead-wall.png --window-size=800,800 \
-  file:///home/byron/round-carplay/airhead-wall.svg"
-# point pcmanfm at it (config: ~/.config/pcmanfm/default/desktop-items-HDMI-A-1.conf)
-#   wallpaper_mode=crop   wallpaper=/home/byron/round-carplay/airhead-wall.png   desktop_bg=#000000
-```
-
-The app's own instant boot splash lives in `src/renderer/index.html` (inline SVG, fades
-out from `main.tsx` once the dashboard mounts) — no Pi-side setup needed.
+1. **Firmware rainbow off** — in `/boot/firmware/config.txt`:
+   ```ini
+   disable_splash=1
+   ```
+2. **Black plymouth boot screen** — create `/usr/share/plymouth/themes/black/`:
+   ```ini
+   # black.plymouth
+   [Plymouth Theme]
+   Name=Black
+   ModuleName=script
+   [script]
+   ImageDir=/usr/share/plymouth/themes/black
+   ScriptFile=/usr/share/plymouth/themes/black/black.script
+   ```
+   ```c
+   // black.script
+   Window.SetBackgroundTopColor(0.0, 0.0, 0.0);
+   Window.SetBackgroundBottomColor(0.0, 0.0, 0.0);
+   ```
+   then `sudo plymouth-set-default-theme -R black` (rebuilds initramfs).
+3. **Black desktop wallpaper** — in `~/.config/pcmanfm/default/desktop-items-HDMI-A-1.conf`:
+   ```ini
+   wallpaper_mode=color
+   desktop_bg=#000000
+   ```
+4. **App splash** — the BMW roundel lives inline in `src/renderer/index.html`
+   (`assets/bmw-logo.svg` is the source); `main.tsx` fades it out once the dashboard
+   mounts. No Pi-side setup.
 
 ---
 

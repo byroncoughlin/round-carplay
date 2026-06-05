@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Reboot Pi
+Comment=Immediately reboot the Raspberry Pi (no confirmation)
+Exec=sudo reboot
+Icon=system-reboot
+Terminal=false
+Categories=System;

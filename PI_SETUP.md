@@ -177,6 +177,22 @@ rsync -az dist/round-carplay-0.1.0-arm64.AppImage \
 > `pkill round-carplay` (by process name), **not** `pkill -f round-carplay.AppImage`
 > (that only matches the launcher).
 
+### Reboot desktop icon
+
+A one-tap **Reboot Pi** launcher lives on the desktop (`pi/reboot-pi.desktop`
+in the repo). It runs `sudo reboot` immediately, no confirmation — relies on the
+passwordless sudo set up in §2.
+
+```bash
+install -m 755 pi/reboot-pi.desktop /home/byron/Desktop/reboot-pi.desktop
+# trust it so pcmanfm runs it on click without the exec prompt:
+gio set /home/byron/Desktop/reboot-pi.desktop metadata::trusted true 2>/dev/null || true
+```
+
+> Single-click desktop is enabled, so a stray tap reboots with no prompt. Swap
+> `Exec` to a confirming variant (e.g. `Exec=lxterminal -e "bash -c 'read -p \"Reboot? Ctrl-C to cancel\" && sudo reboot'"`)
+> if that's a concern.
+
 ---
 
 ## 7. Sensor data flow

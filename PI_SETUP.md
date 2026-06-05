@@ -104,6 +104,7 @@ Each script's header documents its exact wiring. Summary:
 | BNO055 IMU (lean/pitch/G) | `imu.py` | UART `/dev/ttyAMA0` | VIN→1, GND→6, **PS1→3.3V**, SDA→10 (RXD), SCL→8 (TXD) |
 | CHT left/right (MAX31855) | `cht_temp.py` | SPI0 | VIN→5V, GND, DO→21, CLK→23 (both shared via splitter), CS: left→24 (CE0), right→26 (CE1) |
 | Ambient (DS18B20, waterproof) | `ambient_temp.py` | 1-Wire | Data→7 (GPIO4), VCC→3.3V (Pin 17), GND, **4.7kΩ pull-up Data↔VCC** |
+| GPS (Adafruit Ultimate, USB) | `gps.py` | **USB** | Plug into any USB port — no GPIO wiring. Enumerates as `/dev/ttyUSB0`. *(pending hardware)* |
 
 **Critical gotchas learned the hard way:**
 - **BNO055 PS1 must be jumpered to 3.3V** or it boots in I2C mode and is silent on UART.
@@ -189,6 +190,7 @@ All sensor scripts emit to the app's Socket.IO server on `localhost:4000`:
 | `gforce` | `{x, y}` (G) | imu.py |
 | `cht` | `{left, right}` (°C, `null` = no board) | cht_temp.py |
 | `ambient` | number (°C) | ambient_temp.py |
+| `gps` | `{speed (km/h), heading (deg), altitude (m)}` | gps.py |
 
 The renderer subscribes to these in `src/renderer/src/store/store.ts`.
 
@@ -216,4 +218,37 @@ to preserve tuned values across a reflash.
 
 > The stock `99-rpi-keyboard.rules` udev file is shipped by Raspberry Pi OS — leave it;
 > only `52-carplay.rules` is custom.
+
+---
+
+## 9. GPS (pending hardware — Adafruit Ultimate GPS USB)
+
+When the GPS module arrives:
+
+1. **Plug it into any USB port.** Find the device:
+   ```bash
+   ls /dev/ttyUSB* /dev/ttyACM*    # usually /dev/ttyUSB0
+   dmesg | grep -i tty             # confirm + note the USB vendor/product id
+   lsusb                           # for the udev rule below
+   ```
+2. **Install the NMEA parser:**
+   ```bash
+   pip install --user --break-system-packages pynmea2
+   ```
+3. **Stable device name** — add `/etc/udev/rules.d/53-gps.rules` (fill in the
+   `idVendor`/`idProduct` from `lsusb`) so it's always `/dev/gps`:
+   ```udev
+   SUBSYSTEM=="tty", ATTRS{idVendor}=="XXXX", ATTRS{idProduct}=="XXXX", SYMLINK+="gps", MODE="0660", GROUP="dialout"
+   ```
+   then `sudo udevadm control --reload-rules && sudo udevadm trigger`.
+4. **Deploy `gps.py`** to `/home/byron/sensors/` and add `gps.service`
+   (same systemd pattern; `ExecStart=… /home/byron/sensors/gps.py`), then
+   `systemctl --user enable --now gps.service`.
+5. **First fix** outdoors with sky view can take 1–2 min (cold start). The
+   `gps` event then drives speed/heading (`SpeedDisplay`) and altitude
+   (`LeanAngle`) — already wired in the UI.
+
+> The module defaults to 1 Hz, which is fine for a dash. For higher rates,
+> enable `configure_10hz()` in `gps.py` **and** raise `BAUD` to 38400 (10 Hz of
+> NMEA does not fit 9600 baud).
 

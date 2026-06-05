@@ -1,0 +1,21 @@
+<svg viewBox="0 0 480 480" xmlns="http://www.w3.org/2000/svg">
+  <!-- Minimal flat BMW roundel on black. Thin grey outline defines the dark
+       outer ring against a black background. -->
+  <circle cx="240" cy="240" r="214" fill="#0a0a0a" stroke="#3c3c3c" stroke-width="2"/>
+
+  <!-- quartered inner disc (Bavarian white/blue) -->
+  <path d="M240,240 L240,74 A166,166 0 0 0 74,240 Z"  fill="#ffffff"/>  <!-- top-left  white -->
+  <path d="M240,240 L240,74 A166,166 0 0 1 406,240 Z" fill="#0066b1"/>  <!-- top-right blue  -->
+  <path d="M240,240 L406,240 A166,166 0 0 1 240,406 Z" fill="#ffffff"/> <!-- bot-right white -->
+  <path d="M240,240 L74,240 A166,166 0 0 0 240,406 Z"  fill="#0066b1"/> <!-- bot-left  blue  -->
+
+  <!-- thin quadrant separators -->
+  <line x1="240" y1="74" x2="240" y2="406" stroke="#0a0a0a" stroke-width="2" opacity="0.35"/>
+  <line x1="74" y1="240" x2="406" y2="240" stroke="#0a0a0a" stroke-width="2" opacity="0.35"/>
+  <circle cx="240" cy="240" r="166" fill="none" stroke="#3c3c3c" stroke-width="1.5"/>
+
+  <!-- wordmark in the upper ring -->
+  <text x="240" y="56" text-anchor="middle" fill="#ffffff"
+        font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="40"
+        font-weight="700" letter-spacing="3">BMW</text>
+</svg>

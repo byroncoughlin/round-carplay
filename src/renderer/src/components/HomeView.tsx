@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStatusStore } from '../store/store'
-import TuneIcon from '@mui/icons-material/Tune'
 
 const GREEN = '#4caf50'
 const AMBER = '#ffb300'
@@ -84,40 +83,19 @@ export default function HomeView() {
           {Node('iPHONE', phoneSub, phoneColor, isDongleConnected && !isStreaming)}
         </div>
 
-        {/* clock */}
-        <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1 }}>
-          <span style={{ fontSize: 118, fontWeight: 300, color: 'white', letterSpacing: -2, fontFamily: "'Roboto','Helvetica Neue',sans-serif" }}>
-            {h}:{mm}
-          </span>
-          <span style={{ fontSize: 28, fontWeight: 500, color: '#888', marginLeft: 10, letterSpacing: 1 }}>{ampm}</span>
-        </div>
-        <div style={{ fontSize: 18, fontWeight: 500, color: '#888', marginTop: 4, letterSpacing: 0.5 }}>{dateStr}</div>
-
-        {/* enter button */}
-        <button
-          onClick={() => setHomeMode(false)}
-          style={{
-            marginTop: 34, height: 56, padding: '0 34px',
-            background: '#0066b1', border: 'none', borderRadius: 28,
-            color: 'white', fontSize: 16, fontWeight: 800, letterSpacing: 2,
-            fontFamily: 'monospace', cursor: 'pointer',
-            boxShadow: '0 4px 20px rgba(0,102,177,0.4)',
-          }}
-        >
-          ENTER CARPLAY
-        </button>
-
-        {/* settings — subtle secondary action, kept in the safe central zone */}
-        <button
+        {/* clock + date — tap anywhere on it to open settings */}
+        <div
           onClick={() => navigate('/settings')}
-          style={{
-            marginTop: 16, background: 'none', border: 'none', cursor: 'pointer',
-            color: '#666', display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontSize: 12, fontWeight: 700, letterSpacing: 2, fontFamily: 'monospace',
-          }}
+          style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
         >
-          <TuneIcon style={{ fontSize: 16 }} /> SETTINGS
-        </button>
+          <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1 }}>
+            <span style={{ fontSize: 118, fontWeight: 300, color: 'white', letterSpacing: -2, fontFamily: "'Roboto','Helvetica Neue',sans-serif" }}>
+              {h}:{mm}
+            </span>
+            <span style={{ fontSize: 28, fontWeight: 500, color: '#888', marginLeft: 10, letterSpacing: 1 }}>{ampm}</span>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 500, color: '#888', marginTop: 4, letterSpacing: 0.5 }}>{dateStr}</div>
+        </div>
       </div>
 
       {/* ── RETURN-TO-CLOCK button (over the CarPlay 'searching' screen) ── */}

@@ -50,7 +50,10 @@ export default function Nav({ receivingVideo }: NavProps) {
   const isDongleConnected = useStatusStore(s => s.isDongleConnected)
   const isStreaming       = useStatusStore(s => s.isStreaming)
   const cameraFound       = useStatusStore(s => s.cameraFound)
+  const [confirmQuit, setConfirmQuit] = useState(false)
 
+  // NB: every hook (incl. useState above) must run before this early return,
+  // or React throws "rendered fewer hooks than expected" and unmounts the tree.
   if (isStreaming && pathname === '/') {
     return null
   }
@@ -80,7 +83,6 @@ export default function Nav({ receivingVideo }: NavProps) {
     color = theme.palette.text.primary
   }
 
-  const [confirmQuit, setConfirmQuit] = useState(false)
   const quit = () => {
     window.carplay.quit().catch(err => console.error('Quit failed:', err))
   }

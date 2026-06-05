@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import TuneIcon from '@mui/icons-material/Tune'
@@ -80,40 +80,81 @@ export default function Nav({ receivingVideo }: NavProps) {
     color = theme.palette.text.primary
   }
 
+  const [confirmQuit, setConfirmQuit] = useState(false)
   const quit = () => {
     window.carplay.quit().catch(err => console.error('Quit failed:', err))
   }
 
   return (
-    <Tabs
-      value={value}
-      aria-label="Navigation Tabs"
-      variant="fullWidth"
-      textColor="inherit"
-      indicatorColor="secondary"
-    >
-      <Tab
-        icon={icon}
-        component={Link}
-        to="/"
-        sx={{ '& svg': { color } }}
-      />
-      <Tab icon={<TuneIcon />}       component={Link} to="/settings" />
-      <Tab icon={<HelpCenterIcon />} component={Link} to="/info" />
-      <Tab
-        icon={<CameraIcon />}
-        component={Link}
-        to="/camera"
-        disabled={!cameraFound}
-        sx={{
-          '& svg': {
-            color: cameraFound
-              ? theme.palette.common.white
-              : theme.palette.text.disabled
-          }
-        }}
-      />
-      <Tab icon={<CloseIcon />} onClick={quit} />
-    </Tabs>
+    <>
+      <Tabs
+        value={value}
+        aria-label="Navigation Tabs"
+        variant="fullWidth"
+        textColor="inherit"
+        indicatorColor="secondary"
+      >
+        <Tab
+          icon={icon}
+          component={Link}
+          to="/"
+          sx={{ '& svg': { color } }}
+        />
+        <Tab icon={<TuneIcon />}       component={Link} to="/settings" />
+        <Tab icon={<HelpCenterIcon />} component={Link} to="/info" />
+        <Tab
+          icon={<CameraIcon />}
+          component={Link}
+          to="/camera"
+          disabled={!cameraFound}
+          sx={{
+            '& svg': {
+              color: cameraFound
+                ? theme.palette.common.white
+                : theme.palette.text.disabled
+            }
+          }}
+        />
+        <Tab icon={<CloseIcon />} onClick={() => setConfirmQuit(true)} />
+      </Tabs>
+
+      {confirmQuit && (
+        <div
+          onClick={() => setConfirmQuit(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 3000,
+            background: 'rgba(0,0,0,0.94)',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          <div style={{ color: 'white', fontSize: 26, fontWeight: 800, fontFamily: 'sans-serif', letterSpacing: 0.5 }}>
+            Quit motoCarPlay?
+          </div>
+          <div style={{ color: '#888', fontSize: 12, fontFamily: 'monospace', marginBottom: 18 }}>
+            this closes the dashboard app
+          </div>
+          <div style={{ display: 'flex', gap: 16 }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setConfirmQuit(false)} style={confirmBtn('#2a2a2a', '#ccc')}>CANCEL</button>
+            <button onClick={quit} style={confirmBtn('#5c1010', '#ff6b6b')}>QUIT</button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
+
+const confirmBtn = (bg: string, fg: string): React.CSSProperties => ({
+  background: bg,
+  border: `2px solid ${fg}55`,
+  color: fg,
+  borderRadius: 14,
+  height: 52,
+  minWidth: 110,
+  padding: '0 22px',
+  fontSize: 14,
+  fontWeight: 800,
+  letterSpacing: 2,
+  cursor: 'pointer',
+  fontFamily: 'monospace',
+})

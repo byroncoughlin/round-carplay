@@ -101,7 +101,7 @@ export default function HomeView() {
             </span>
             <span style={{ fontSize: 34, fontWeight: 500, color: '#888', marginLeft: 12, letterSpacing: 1 }}>{ampm}</span>
           </div>
-          <div style={{ fontSize: 18, fontWeight: 500, color: '#888', marginTop: 4, letterSpacing: 0.5 }}>{dateStr}</div>
+          <div style={{ fontSize: 22, fontWeight: 500, color: '#888', marginTop: 6, letterSpacing: 0.5 }}>{dateStr}</div>
         </div>
       </div>
 

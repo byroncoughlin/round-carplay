@@ -112,11 +112,16 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
 
   return (
     <div style={{
-      // inset:-1 bleeds the overlay 1px past the center square on every side so
-      // it always covers the subpixel seam left by the square's fractional
-      // (translate -50%) centering — otherwise a ~1px sliver of background shows.
-      position: 'absolute', inset: -1,
-      background: 'rgba(0,0,0,0.97)',
+      // Definite viewport-based size (the 565/800 center square) + 1px bleed on
+      // every side. We can't use inset:-1 / height:100% here: the center square's
+      // percentage-height chain collapses, so the absolute parent has no definite
+      // height and the chart SVG (flex:1) computes to 0px — the graph never shows.
+      // The +2px and -1 offset cover the subpixel seam from the square's
+      // fractional (translate -50%) centering.
+      position: 'absolute', top: -1, left: -1,
+      width:  'calc(min(100vw, 100vh) * 0.70625 + 2px)',
+      height: 'calc(min(100vw, 100vh) * 0.70625 + 2px)',
+      background: '#000',
       zIndex: 1400,
       display: 'flex',
       flexDirection: 'column',

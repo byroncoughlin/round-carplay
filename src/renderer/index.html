@@ -16,36 +16,9 @@
         overflow: hidden;
         background-color: #000000;
       }
-      /* Instant boot splash — visible the moment the window paints, before the
-         JS bundle loads. main.tsx fades it out once the dashboard is ready. */
-      #splash {
-        position: fixed; inset: 0; z-index: 99999;
-        display: flex; align-items: center; justify-content: center;
-        background: #000000;
-        opacity: 1; transition: opacity 600ms ease;
-        -webkit-user-select: none; user-select: none;
-      }
-      #splash.hide { opacity: 0; pointer-events: none; }
-      #splash svg { width: 64vmin; height: 64vmin; animation: splashPulse 1.8s ease-in-out infinite; }
-      @keyframes splashPulse { 0%,100% { opacity: .6 } 50% { opacity: 1 } }
     </style>
   </head>
   <body>
-    <div id="splash">
-      <svg viewBox="0 0 480 480" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="240" cy="240" r="214" fill="#0a0a0a" stroke="#3c3c3c" stroke-width="2"/>
-        <path d="M240,240 L240,74 A166,166 0 0 0 74,240 Z"  fill="#ffffff"/>
-        <path d="M240,240 L240,74 A166,166 0 0 1 406,240 Z" fill="#0066b1"/>
-        <path d="M240,240 L406,240 A166,166 0 0 1 240,406 Z" fill="#ffffff"/>
-        <path d="M240,240 L74,240 A166,166 0 0 0 240,406 Z"  fill="#0066b1"/>
-        <line x1="240" y1="74" x2="240" y2="406" stroke="#0a0a0a" stroke-width="2" opacity="0.35"/>
-        <line x1="74" y1="240" x2="406" y2="240" stroke="#0a0a0a" stroke-width="2" opacity="0.35"/>
-        <circle cx="240" cy="240" r="166" fill="none" stroke="#3c3c3c" stroke-width="1.5"/>
-        <text x="240" y="56" text-anchor="middle" fill="#ffffff"
-              font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="40"
-              font-weight="700" letter-spacing="3">BMW</text>
-      </svg>
-    </div>
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
   </body>

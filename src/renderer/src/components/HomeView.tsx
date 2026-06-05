@@ -67,7 +67,10 @@ export default function HomeView() {
     <>
       {/* ── IDLE OVERLAY ── */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+        // Definite height (the 565/800 center square) so flex centering has
+        // real space — the parent %-height chain doesn't resolve reliably here.
+        position: 'absolute', top: 0, left: 0,
+        width: '100%', height: 'calc(min(100vw, 100vh) * 0.70625)',
         zIndex: 1300, background: '#000',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         opacity: showIdle ? 1 : 0,

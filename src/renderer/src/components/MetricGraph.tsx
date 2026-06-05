@@ -329,24 +329,28 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
           <path d={areaPath} fill={`url(#mg-grad-${metricKey})`} clipPath={`url(#mg-clip-${metricKey})`} />
         )}
 
-        {/* Threshold guide lines at each zone boundary (e.g. 70°, 80°) */}
-        {zones && zones.slice(0, -1).map((z, i) => {
-          if (z.max <= yMin || z.max >= yMax) return null
-          const y = yFor(z.max)
+        {/* Threshold guide lines at the lower edge of each labeled band
+            (e.g. WARM 70°, THROTTLE 80° / WARM 160°, HOT 220°) */}
+        {zones && zones.map((z, i) => {
+          if (i === 0 || !z.label) return null
+          const thr = zones[i - 1].max                   // lower boundary of this band
+          if (thr <= yMin || thr >= yMax) return null
+          const y = yFor(thr)
           return (
             <g key={`thr-${i}`}>
               <line x1={CX} y1={y} x2={CX + CW} y2={y}
                 stroke={z.color} strokeWidth={1} strokeDasharray="4 4" opacity={0.55} />
               <text x={CX + CW - 4} y={y - 4} textAnchor="end"
                 fill={z.color} fontSize={9} fontFamily="monospace" opacity={0.85}>
-                {zones[i + 1].label} {cfg.fmtVal(z.max)}°
+                {z.label} {cfg.fmtVal(thr)}°
               </text>
             </g>
           )
         })}
 
         {linePath && (
-          <path d={linePath} fill="none" stroke={cfg.color} strokeWidth={2}
+          <path d={linePath} fill="none"
+            stroke={zones ? 'rgba(255,255,255,0.9)' : cfg.color} strokeWidth={2}
             strokeLinejoin="round" strokeLinecap="round" clipPath={`url(#mg-clip-${metricKey})`} />
         )}
 

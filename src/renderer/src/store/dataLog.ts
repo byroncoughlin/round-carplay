@@ -30,12 +30,21 @@ export interface MetricConfig {
   zones?: MetricZone[]
 }
 
+// Cylinder-head risk bands — same thresholds/colors as the main-screen CHT
+// gauge (see CHTGauge.tempColor): cold < 80, normal < 160, warm < 220, hot ≥ 220.
+const CHT_ZONES: MetricZone[] = [
+  { max: 80,       color: '#4fc3f7' },                  // cold   (blue)
+  { max: 160,      color: '#66bb6a' },                  // normal (green)
+  { max: 220,      color: '#ffca28', label: 'WARM' },   // warm   (amber)
+  { max: Infinity, color: '#ef5350', label: 'HOT'  },   // hot    (red)
+]
+
 export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
   speed:       { label: 'SPEED',     unit: 'mph', color: '#4fc3f7', minRange: 20,  fmtVal: v => String(Math.round(v)) },
   heading:     { label: 'HEADING',   unit: '°',   color: '#81c784', minRange: 45,  fmtVal: v => String(Math.round(v)) },
   ambientTemp: { label: 'AMBIENT',   unit: '°F',  color: '#fff176', minRange: 10,  fmtVal: v => String(Math.round(v)) },
-  chtLeft:     { label: 'CHT LEFT',  unit: '°C',  color: '#ff8a65', minRange: 30,  fmtVal: v => String(Math.round(v)) },
-  chtRight:    { label: 'CHT RIGHT', unit: '°C',  color: '#ff5252', minRange: 30,  fmtVal: v => String(Math.round(v)) },
+  chtLeft:     { label: 'CHT LEFT',  unit: '°C',  color: '#ff8a65', minRange: 30,  fmtVal: v => String(Math.round(v)), zones: CHT_ZONES },
+  chtRight:    { label: 'CHT RIGHT', unit: '°C',  color: '#ff5252', minRange: 30,  fmtVal: v => String(Math.round(v)), zones: CHT_ZONES },
   altitude:    { label: 'ALTITUDE',  unit: 'ft',  color: '#ce93d8', minRange: 100, fmtVal: v => Math.round(v).toLocaleString() },
   gForce:      { label: 'G-FORCE',   unit: 'G',   color: '#ffca28', minRange: 0.5, fmtVal: v => v.toFixed(2) },
   leanAngle:   { label: 'LEAN',      unit: '°',   color: '#ffd700', minRange: 30,  fmtVal: v => String(Math.round(v)) },

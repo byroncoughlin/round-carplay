@@ -185,13 +185,17 @@ passwordless sudo set up in §2.
 
 ```bash
 install -m 755 pi/reboot-pi.desktop /home/byron/Desktop/reboot-pi.desktop
-# trust it so pcmanfm runs it on click without the exec prompt:
 gio set /home/byron/Desktop/reboot-pi.desktop metadata::trusted true 2>/dev/null || true
+# pcmanfm caches the *filename* as the label for files added live; force a fresh
+# desktop scan so it shows the Name ("Reboot Pi") and treats it as a launcher.
+# lwrespawn (labwc) restarts a single clean instance — do NOT spawn a second one.
+pkill -x pcmanfm   # auto-respawns; happens anyway on the next login/reboot
 ```
 
-> Single-click desktop is enabled, so a stray tap reboots with no prompt. Swap
-> `Exec` to a confirming variant (e.g. `Exec=lxterminal -e "bash -c 'read -p \"Reboot? Ctrl-C to cancel\" && sudo reboot'"`)
-> if that's a concern.
+> `single_click=1` + `quick_exec=1` (in `~/.config/libfm/libfm.conf`) make a
+> single tap run `Exec` with no trust prompt — i.e. one tap reboots, no
+> confirmation. If a stray tap rebooting is a concern, swap `Exec` to a
+> confirming variant (e.g. `Exec=lxterminal -e "bash -c 'read -p \"Reboot? Ctrl-C to cancel\" && sudo reboot'"`).
 
 ---
 

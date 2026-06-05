@@ -1,93 +1,166 @@
 #!/usr/bin/env python3
 """
-imu.py — BNO055 IMU reader
+imu.py — BNO055 IMU reader (UART, raw protocol)
 Reads lean angle, pitch, and G-force from the BNO055 and emits to
 the CarPlay app via Socket.IO.
 
-Hardware (I2C):
+WHY UART + RAW PROTOCOL:
+  * I2C is unusable on the Pi 5: the BNO055 clock-stretches, the hardware
+    controller (RP1 "designware") locks up ("SDA stuck at low"), and software
+    i2c-gpio drops the first bit of every read.  UART has no clock to stretch.
+  * The adafruit_bno055 BNO055_UART *library* is itself unreliable on this
+    chip — its init routine throws "UART write error" and can leave the chip
+    stuck in a non-fusion mode after a reboot.  The BNO055's raw UART register
+    protocol, by contrast, is rock-solid (verified 100% read/write success).
+    So we talk to it directly and skip the library entirely.
+
+Hardware (UART mode):
   VIN → Pi Pin 1  (3.3V)
-  GND → Pi Pin 20 (GND)
-  SDA → Pi Pin 3  (GPIO2, I2C SDA)
-  SCL → Pi Pin 5  (GPIO3, I2C SCL)
+  GND → Pi Pin 6  (GND)
+  PS1 → 3.3V          (selects UART mode)
+  SDA → Pi Pin 10 (GPIO15, RXD)   BNO055 TX → Pi RX
+  SCL → Pi Pin 8  (GPIO14, TXD)   BNO055 RX → Pi TX
 
-Euler angles (BNO055 NDOF mode):
-  euler[0] = heading  (0-360°, compass)
-  euler[1] = roll     → lean angle (positive = right)
-  euler[2] = pitch    → pitch angle (positive = nose up)
+Pi config (/boot/firmware/config.txt):  dtparam=uart0=on  → /dev/ttyAMA0
 
-Linear acceleration is gravity-compensated m/s², divided by 9.81 for G.
+BNO055 UART register protocol:
+  READ : 0xAA 0x01 <reg> <len>     → 0xBB <len> <data..>   | 0xEE <errcode>
+  WRITE: 0xAA 0x00 <reg> <len> <d> → 0xEE 0x01 (ok)        | 0xEE <errcode>
+Each _read/_write retries with a buffer flush, so an occasional UART desync
+costs one quick retry instead of stalling the display.
 
-Systemd service: ~/.config/systemd/user/imu.service
+Registers (page 0):
+  OPR_MODE 0x3D   (0x00 CONFIG, 0x0C NDOF fusion)
+  EUL      0x1A   6 bytes: heading, roll, pitch  (int16 LE, 16 LSB/deg)
+  LIA      0x28   6 bytes: x, y, z linear accel  (int16 LE, 100 LSB/(m/s^2))
 
-I2C note: set dtparam=i2c_arm_baudrate=10000 in /boot/firmware/config.txt
-to slow the clock for BNO055 clock-stretching compatibility.
+euler roll → lean angle (positive = right); euler pitch → pitch (nose up +).
 
-BNO055 quirk: when the internal fusion hasn't produced a new result yet,
-it returns 0xFFFF in the Euler angle registers, which the Adafruit library
-decodes as -0.0625°.  Both roll AND pitch return this exact value at the
-same time.  We detect and skip these frames so the UI holds its last
-good reading rather than flickering to zero.
+BNO055 quirk: when fusion isn't ready the Euler regs read 0xFFFF (-0.0625°)
+in roll AND pitch at once; we skip those frames so the UI holds its last
+good value instead of flickering to zero.
 """
 
 import time
-import board
-import busio
-import adafruit_bno055
+import struct
+import serial
 import socketio
 
-INTERVAL = 0.1    # 10 Hz update rate
+INTERVAL   = 0.1            # ~10 Hz
 SERVER_URL = 'http://localhost:4000'
+UART_PORT  = '/dev/ttyAMA0'
+UART_BAUD  = 115200
 
-# BNO055 "data not ready" sentinel value in the Adafruit library
-# (0xFFFF as a signed 16-bit int * 1/16 deg/LSB = -0.0625°)
-BNO_SENTINEL = -0.0625
+OPR_MODE    = 0x3D
+MODE_CONFIG = 0x00
+MODE_NDOF   = 0x0C
+CHIP_ID_REG = 0x00
+EUL_REG     = 0x1A
+LIA_REG     = 0x28
+
+BNO_SENTINEL = -0.0625      # 0xFFFF/16 — fusion "not ready"
+
+
+class BNO055UART:
+    """Minimal, robust raw-protocol driver for the BNO055 over UART."""
+
+    def __init__(self, port, baud):
+        self.u = serial.Serial(port, baudrate=baud, timeout=0.25)
+        self.u.reset_input_buffer()
+        self.u.reset_output_buffer()
+        time.sleep(0.1)
+
+    def _read(self, reg, length, tries=4):
+        for _ in range(tries):
+            self.u.reset_input_buffer()
+            self.u.write(bytes([0xAA, 0x01, reg, length]))
+            head = self.u.read(2)                       # 0xBB <len> on success
+            if len(head) == 2 and head[0] == 0xBB and head[1] == length:
+                data = self.u.read(length)
+                if len(data) == length:
+                    return data
+            # else: 0xEE <err> or desync — flush + retry
+        return None
+
+    def _write(self, reg, data, tries=4):
+        payload = bytes([0xAA, 0x00, reg, len(data)]) + bytes(data)
+        for _ in range(tries):
+            self.u.reset_input_buffer()
+            self.u.write(payload)
+            resp = self.u.read(2)                       # 0xEE 0x01 on success
+            if len(resp) == 2 and resp[0] == 0xEE and resp[1] == 0x01:
+                return True
+        return False
+
+    def begin(self):
+        cid = self._read(CHIP_ID_REG, 1)
+        if not cid or cid[0] != 0xA0:
+            raise RuntimeError(f'BNO055 chip id wrong/absent: {cid}')
+        # Always force a clean CONFIG → NDOF cycle so a reboot can never leave
+        # the chip stuck in a non-fusion mode.
+        self._write(OPR_MODE, [MODE_CONFIG]); time.sleep(0.03)
+        self._write(OPR_MODE, [MODE_NDOF]);   time.sleep(0.05)
+
+    def euler(self):
+        d = self._read(EUL_REG, 6)
+        if not d:
+            return None
+        h, r, p = struct.unpack('<hhh', d)
+        return h / 16.0, r / 16.0, p / 16.0
+
+    def lin_accel(self):
+        d = self._read(LIA_REG, 6)
+        if not d:
+            return None
+        x, y, z = struct.unpack('<hhh', d)
+        return x / 100.0, y / 100.0, z / 100.0
+
+    def close(self):
+        try:
+            self.u.close()
+        except Exception:
+            pass
+
 
 sio = socketio.Client(reconnection=True, reconnection_attempts=0)
 
 @sio.event
 def connect():
-    print('[imu] Connected to CarPlay app')
+    print('[imu] Connected to CarPlay app', flush=True)
 
 @sio.event
 def disconnect():
-    print('[imu] Disconnected — will reconnect')
+    print('[imu] Disconnected — will reconnect', flush=True)
 
 def is_sentinel(v):
-    """Return True if value matches the BNO055 not-ready sentinel."""
     return v is None or abs(v - BNO_SENTINEL) < 0.001
 
 def main():
-    i2c    = busio.I2C(board.SCL, board.SDA)
-    sensor = adafruit_bno055.BNO055_I2C(i2c)
-
-    print('[imu] BNO055 initialised')
-
+    bno = None
     while True:
         try:
+            bno = BNO055UART(UART_PORT, UART_BAUD)
+            bno.begin()
+            print('[imu] BNO055 NDOF ready (raw UART)', flush=True)
+
             sio.connect(SERVER_URL)
             while True:
-                euler = sensor.euler
-                accel = sensor.linear_acceleration
-
-                if euler is None or accel is None:
+                e = bno.euler()
+                a = bno.lin_accel()
+                if e is None or a is None:
                     time.sleep(INTERVAL)
                     continue
 
-                lean  = euler[1]
-                pitch = euler[2]
-
-                # Skip frames where the BNO055 returns its not-ready sentinel.
-                # On a Raspberry Pi the I2C timing causes this on ~40% of reads;
-                # without skipping, the display flickers to zero each time.
+                lean, pitch = e[1], e[2]
                 if is_sentinel(lean) or is_sentinel(pitch):
                     time.sleep(INTERVAL)
                     continue
 
-                gx = round((accel[0] or 0.0) / 9.81, 3)  # lateral G
-                gy = round((accel[1] or 0.0) / 9.81, 3)  # longitudinal G
+                gx = round(a[0] / 9.81, 3)   # lateral G
+                gy = round(a[1] / 9.81, 3)   # longitudinal G
 
-                sio.emit('lean',   round(float(lean),  2))
-                sio.emit('pitch',  round(float(pitch), 2))
+                sio.emit('lean',   round(lean,  2))
+                sio.emit('pitch',  round(pitch, 2))
                 sio.emit('gforce', {'x': gx, 'y': gy})
 
                 time.sleep(INTERVAL)
@@ -95,11 +168,13 @@ def main():
         except KeyboardInterrupt:
             break
         except Exception as e:
-            print(f'[imu] Error: {e} — retrying in 5s')
+            print(f'[imu] Link error: {e} — re-initialising in 5s', flush=True)
             try:
                 sio.disconnect()
             except Exception:
                 pass
+            if bno is not None:
+                bno.close()
             time.sleep(5)
 
 if __name__ == '__main__':

@@ -181,7 +181,8 @@ function createWindow(): void {
     useContentSize: true,
     kiosk: false,
     autoHideMenuBar: true,
-    backgroundColor: '#000',
+    show: false,            // stay hidden until first paint — no white flash
+    backgroundColor: '#000000',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -217,8 +218,9 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => {
     if (!mainWindow) return
-    mainWindow.show()
 
+    // Size to its final geometry BEFORE revealing, so the window appears
+    // already-fullscreen with the splash painted — no white flash, no resize jump.
     if (config.kiosk) {
       mainWindow.setKiosk(true)
       applyAspectRatio(mainWindow, 0, 0)
@@ -226,6 +228,8 @@ function createWindow(): void {
       mainWindow.setContentSize(config.width, config.height, false)
       applyAspectRatio(mainWindow, config.width, config.height)
     }
+
+    mainWindow.show()
 
     if (is.dev) mainWindow.webContents.openDevTools({ mode: 'detach' })
     carplayService.attachRenderer(mainWindow.webContents)

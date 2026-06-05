@@ -75,6 +75,8 @@ export interface CarplayStore {
   gpsSpeed: number | null    // km/h
   heading: number | null     // degrees 0-360
   altitude: number | null    // meters
+  gpsFix: boolean | null     // true = sat fix; false = acquiring; null = no GPS data yet
+  gpsSats: number            // satellites in use
   leanAngle: number | null   // degrees, positive = right lean
   chtLeft: number | null     // celsius, left cylinder head
   chtRight: number | null    // celsius, right cylinder head
@@ -89,6 +91,8 @@ export const useCarplayStore = create<CarplayStore>((set) => ({
   gpsSpeed: null,
   heading: null,
   altitude: null,
+  gpsFix: null,
+  gpsSats: 0,
   leanAngle: null,
   chtLeft: null,
   gForceX: null,
@@ -219,6 +223,9 @@ socket.on('gps', (data: { speed: number; heading: number; altitude: number }) =>
   log('speed',    toMph(data.speed))
   log('heading',  data.heading)
   log('altitude', toFt(data.altitude))
+})
+socket.on('gps-status', (data: { fix: boolean; sats: number }) => {
+  useCarplayStore.setState({ gpsFix: data.fix, gpsSats: data.sats })
 })
 socket.on('lean', (angle: number) => {
   useCarplayStore.setState({ leanAngle: angle })

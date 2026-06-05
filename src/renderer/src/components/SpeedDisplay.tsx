@@ -13,13 +13,22 @@ export default function SpeedDisplay() {
   const speedKmh    = useCarplayStore((s) => s.gpsSpeed)
   const heading     = useCarplayStore((s) => s.heading)
   const ambientC    = useCarplayStore((s) => s.ambientTemp)
+  const gpsFix      = useCarplayStore((s) => s.gpsFix)
+  const gpsSats     = useCarplayStore((s) => s.gpsSats)
   const setActive = useStatusStore((s) => s.setActiveGraph)
   const tap = (key: 'speed' | 'heading' | 'ambientTemp') =>
     setActive(useStatusStore.getState().activeGraph === key ? null : key)
 
-  const speed    = speedKmh !== null ? Math.round(speedKmh * 0.621371) : null
-  const cardinal = heading  !== null ? toCardinal(heading) : null
+  // Without a satellite fix the speed/heading are stale/meaningless, so blank
+  // them and show the acquiring indicator instead.
+  const speed    = gpsFix && speedKmh !== null ? Math.round(speedKmh * 0.621371) : null
+  const cardinal = gpsFix && heading  !== null ? toCardinal(heading) : null
   const tempF    = ambientC !== null ? toF(ambientC) : null
+
+  // GPS status chip: hidden once we have a fix; otherwise "NO GPS" (no data yet)
+  // or "ACQUIRING · n SAT" while the receiver searches for satellites.
+  const gpsDotColor = gpsFix == null ? '#777' : '#ffb300'
+  const gpsLabel    = gpsFix == null ? 'NO GPS' : `ACQUIRING${gpsSats > 0 ? ` · ${gpsSats} SAT` : ''}`
 
   // Each band tiles the full arc height (top:0 bottom:0) so the entire
   // 117 px strip is tappable — no tiny text-only hit boxes.
@@ -36,6 +45,23 @@ export default function SpeedDisplay() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
 
+      {/* ── GPS status chip — top-centre, only while there's no fix ── */}
+      {!gpsFix && (
+        <div style={{
+          position: 'absolute', top: 5, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 5,
+          whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
+        }}>
+          <span
+            className={gpsFix === false ? 'animate-pulse' : undefined}
+            style={{ width: 7, height: 7, borderRadius: '50%', background: gpsDotColor, boxShadow: `0 0 6px ${gpsDotColor}88` }}
+          />
+          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.5, color: '#bbb', fontFamily: 'monospace' }}>
+            {gpsLabel}
+          </span>
+        </div>
+      )}
+
       {/* ── HEADING band — full left third ── */}
       <div
         style={{ ...bandBase, left: 0, width: '30%', paddingBottom: 1 }}
@@ -45,7 +71,7 @@ export default function SpeedDisplay() {
           {cardinal ?? '--'}
         </span>
         <span style={{ fontSize: 14, fontWeight: 700, color: '#888', marginTop: 2 }}>
-          {heading !== null ? `${Math.round(heading)}°` : ''}
+          {cardinal !== null ? `${Math.round(heading!)}°` : ''}
         </span>
       </div>
 

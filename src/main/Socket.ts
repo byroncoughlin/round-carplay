@@ -35,6 +35,7 @@ export class Socket extends EventEmitter {
       // Sensor bridge — forward events from Pi sensor scripts to the renderer
       socket.on('ambient', (temp: number) => socket.broadcast.emit('ambient', temp))
       socket.on('gps',     (data: any)    => socket.broadcast.emit('gps', data))
+      socket.on('gps-status', (data: any) => socket.broadcast.emit('gps-status', data))
       socket.on('lean',    (angle: number) => socket.broadcast.emit('lean', angle))
       socket.on('cht',     (data: any)    => socket.broadcast.emit('cht', data))
       socket.on('gforce',  (data: any)    => socket.broadcast.emit('gforce', data))

@@ -80,6 +80,7 @@ def main():
     # conditions (moving / has fix), so we hold the last good reading.
     last = {'speed': 0.0, 'heading': 0.0, 'altitude': 0.0}
     have_fix = False
+    sats     = 0   # satellites in use (from GGA), for the "acquiring" UI
 
     while True:
         ser = None
@@ -115,18 +116,28 @@ def main():
                     else:
                         have_fix = False
 
+                    # RMC arrives once per second — use it as the heartbeat for a
+                    # lightweight status (fix yes/no + sat count) so the UI can show
+                    # "acquiring" instead of just freezing on the last reading.
+                    sio.emit('gps-status', {'fix': have_fix, 'sats': sats})
+
+                    # Push the real data only once we actually have a fix.
+                    if have_fix:
+                        sio.emit('gps', {
+                            'speed':    last['speed'],
+                            'heading':  last['heading'],
+                            'altitude': last['altitude'],
+                        })
+
                 elif isinstance(msg, pynmea2.types.talker.GGA):
+                    # satellites in use — updates even before a full fix
+                    try:
+                        sats = int(msg.num_sats) if msg.num_sats else 0
+                    except ValueError:
+                        sats = 0
                     # gps_qual 0 = no fix
                     if msg.gps_qual and int(msg.gps_qual) > 0 and msg.altitude is not None:
                         last['altitude'] = round(float(msg.altitude), 1)
-
-                # Only push to the UI once we actually have a fix.
-                if have_fix:
-                    sio.emit('gps', {
-                        'speed':    last['speed'],
-                        'heading':  last['heading'],
-                        'altitude': last['altitude'],
-                    })
 
         except KeyboardInterrupt:
             break

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type MetricKey =
   | 'speed' | 'heading' | 'ambientTemp' | 'chtLeft' | 'chtRight'
-  | 'altitude' | 'gForce' | 'leanAngle' | 'pitchAngle'
+  | 'altitude' | 'gForce' | 'leanAngle' | 'pitchAngle' | 'piTemp'
 
 export interface DataPoint {
   ts: number   // unix ms
@@ -30,6 +30,7 @@ export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
   gForce:      { label: 'G-FORCE',   unit: 'G',   color: '#ffca28', minRange: 0.5, fmtVal: v => v.toFixed(2) },
   leanAngle:   { label: 'LEAN',      unit: '°',   color: '#ffd700', minRange: 30,  fmtVal: v => String(Math.round(v)) },
   pitchAngle:  { label: 'PITCH',     unit: '°',   color: '#80cbc4', minRange: 20,  fmtVal: v => String(Math.round(v)) },
+  piTemp:      { label: 'PI CPU',    unit: '°C',  color: '#4dd0e1', minRange: 15,  fmtVal: v => String(Math.round(v)) },
 }
 
 const MAX_AGE_MS  = 8 * 60 * 60 * 1000  // 8 hours
@@ -37,7 +38,7 @@ const THROTTLE_MS = 1000                 // 1 sample / second per metric
 
 const empty = (): Record<MetricKey, DataPoint[]> => ({
   speed: [], heading: [], ambientTemp: [], chtLeft: [], chtRight: [],
-  altitude: [], gForce: [], leanAngle: [], pitchAngle: [],
+  altitude: [], gForce: [], leanAngle: [], pitchAngle: [], piTemp: [],
 })
 
 interface DataLogStore {

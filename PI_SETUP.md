@@ -94,7 +94,7 @@ Copy the repo's `sensors/*.py` to `/home/byron/sensors/`:
 
 ```bash
 mkdir -p /home/byron/sensors
-# from repo:  scp sensors/{imu,cht_temp,ambient_temp}.py byron@motocarplay.local:/home/byron/sensors/
+# from repo:  scp sensors/{imu,cht_temp,ambient_temp,pi_temp,gps}.py byron@motocarplay.local:/home/byron/sensors/
 ```
 
 Each script's header documents its exact wiring. Summary:
@@ -105,6 +105,7 @@ Each script's header documents its exact wiring. Summary:
 | CHT left/right (MAX31855) | `cht_temp.py` | SPI0 | VIN→5V, GND, DO→21, CLK→23 (both shared via splitter), CS: left→24 (CE0), right→26 (CE1) |
 | Ambient (DS18B20, waterproof) | `ambient_temp.py` | 1-Wire | Data→7 (GPIO4), VCC→3.3V (Pin 17), GND, **4.7kΩ pull-up Data↔VCC** |
 | GPS (Adafruit Ultimate, USB) | `gps.py` | **USB** | Plug into any USB port — no GPIO wiring. CP210x bridge (`10c4:ea60`) → `/dev/ttyUSB0`, stable symlink `/dev/gps`. Emits `GN`-talker NMEA (GPS+GLONASS). |
+| Pi CPU temp (on-die) | `pi_temp.py` | — | No wiring. Reads `/sys/class/thermal/thermal_zone0/temp`. Shown under AMBIENT (tap → split graph). |
 
 **Critical gotchas learned the hard way:**
 - **BNO055 PS1 must be jumpered to 3.3V** or it boots in I2C mode and is silent on UART.
@@ -139,12 +140,13 @@ WantedBy=default.target
 
 - `cht-temp.service` → `ExecStart=… /home/byron/sensors/cht_temp.py`
 - `ambient-temp.service` → `ExecStart=… /home/byron/sensors/ambient_temp.py`
+- `pi-temp.service` → `ExecStart=… /home/byron/sensors/pi_temp.py`
 
-Enable + start all three:
+Enable + start them all:
 
 ```bash
 systemctl --user daemon-reload
-systemctl --user enable --now imu.service cht-temp.service ambient-temp.service
+systemctl --user enable --now imu.service cht-temp.service ambient-temp.service pi-temp.service
 ```
 
 ---
@@ -210,6 +212,7 @@ All sensor scripts emit to the app's Socket.IO server on `localhost:4000`:
 | `gforce` | `{x, y}` (G) | imu.py |
 | `cht` | `{left, right}` (°C, `null` = no board) | cht_temp.py |
 | `ambient` | number (°C) | ambient_temp.py |
+| `pi-temp` | `{cpu}` (°C) | pi_temp.py |
 | `gps` | `{speed (km/h), heading (deg), altitude (m)}` | gps.py |
 
 The renderer subscribes to these in `src/renderer/src/store/store.ts`.

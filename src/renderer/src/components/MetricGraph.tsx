@@ -4,13 +4,12 @@ import { useDataLog, METRIC_CONFIG, MetricKey } from '../store/dataLog'
 const WINDOW_MS  = 5 * 60 * 1000
 const MAX_AGE_MS = 8 * 60 * 60 * 1000
 
-// Chart SVG coordinate space
-const SVG_W = 565
-const SVG_H = 420
-const CX    = 46    // left margin for y-axis labels
-const CW    = SVG_W - CX - 10   // 509
-const CY    = 10
-const CH    = 358   // chart height (leaves 52 for x labels + scroll bar)
+// Some metrics open a stacked split view instead of a single chart.
+// Tapping AMBIENT shows cabin/ambient temp on top and the Pi CPU temp below,
+// each with its own live chart — two temperatures, two graphs, one screen.
+const SPLIT: Partial<Record<MetricKey, MetricKey[]>> = {
+  ambientTemp: ['ambientTemp', 'piTemp'],
+}
 
 interface Props {
   metricKey: MetricKey
@@ -18,23 +17,16 @@ interface Props {
 }
 
 export default function MetricGraph({ metricKey, onClose }: Props) {
-  const data        = useDataLog(s => s.data[metricKey])
-  const clearMetric = useDataLog(s => s.clearMetric)
-  const cfg         = METRIC_CONFIG[metricKey]
+  const keys    = SPLIT[metricKey] ?? [metricKey]
+  const compact = keys.length > 1
 
-  const [nowMs,        setNowMs]        = useState(() => Date.now())
-  const [viewOffset,   setViewOffset]   = useState(0)
-  const [confirmReset, setConfirmReset] = useState(false)
-  const [confirmQuit,  setConfirmQuit]  = useState(false)
+  const [nowMs,       setNowMs]       = useState(() => Date.now())
+  const [confirmQuit, setConfirmQuit] = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
-
-  const panRef = useRef<{ active: boolean; startX: number; startOff: number }>({
-    active: false, startX: 0, startOff: 0,
-  })
 
   // Close button: short tap closes the graph; press-and-hold opens a quit prompt
   // (the only way to quit the app when only the graph buttons are reachable).
@@ -50,6 +42,93 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
   }
   const closeHoldCancel = () => { if (holdRef.current.t) clearTimeout(holdRef.current.t) }
 
+  return (
+    <div style={{
+      // Definite viewport-based size (the 565/800 center square) + 1px bleed on
+      // every side. We can't use inset:-1 / height:100% here: the center square's
+      // percentage-height chain collapses, so the absolute parent has no definite
+      // height and the chart SVG (flex:1) computes to 0px — the graph never shows.
+      position: 'absolute', top: -1, left: -1,
+      width:  'calc(min(100vw, 100vh) * 0.70625 + 2px)',
+      height: 'calc(min(100vw, 100vh) * 0.70625 + 2px)',
+      background: '#000',
+      zIndex: 1400,
+      display: 'flex',
+      flexDirection: 'column',
+      userSelect: 'none',
+    }}>
+      {/* Floating close button — shared across panes, top-right corner */}
+      <button
+        onPointerDown={closeHoldStart}
+        onPointerUp={closeHoldEnd}
+        onPointerLeave={closeHoldCancel}
+        style={{ ...closeBtn, position: 'absolute', top: 10, right: 12, zIndex: 20 }}
+        title="tap to close · hold to quit app"
+      >✕</button>
+
+      {keys.map((k, i) => (
+        <Pane
+          key={k}
+          metricKey={k}
+          nowMs={nowMs}
+          compact={compact}
+          first={i === 0}
+        />
+      ))}
+
+      {/* Hold-✕-to-quit confirmation */}
+      {confirmQuit && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 500,
+          background: 'rgba(0,0,0,0.94)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}>
+          <div style={{ color: 'white', fontSize: 26, fontWeight: 800, fontFamily: 'sans-serif', letterSpacing: 0.5 }}>
+            Quit motoCarPlay?
+          </div>
+          <div style={{ color: '#888', fontSize: 12, fontFamily: 'monospace', marginBottom: 18 }}>
+            this closes the dashboard app
+          </div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <button onClick={() => setConfirmQuit(false)} style={actionBtn('#2a2a2a', '#ccc')}>CANCEL</button>
+            <button onClick={() => window.carplay.quit()} style={actionBtn('#5c1010', '#ff6b6b')}>QUIT</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── One metric's header + value + chart. Self-contained: owns its own pan
+//    offset and reset state so split panes scroll/reset independently. ────────
+interface PaneProps {
+  metricKey: MetricKey
+  nowMs: number
+  compact: boolean
+  first: boolean
+}
+
+function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
+  const data        = useDataLog(s => s.data[metricKey])
+  const clearMetric = useDataLog(s => s.clearMetric)
+  const cfg         = METRIC_CONFIG[metricKey]
+
+  const [viewOffset,   setViewOffset]   = useState(0)
+  const [confirmReset, setConfirmReset] = useState(false)
+
+  const panRef = useRef<{ active: boolean; startX: number; startOff: number }>({
+    active: false, startX: 0, startOff: 0,
+  })
+
+  // Chart SVG coordinate space — wider/shorter aspect when compact (stacked).
+  const SVG_W = 565
+  const CX    = 46                 // left margin for y-axis labels
+  const CW    = SVG_W - CX - 10     // 509
+  const CY    = 8
+  const CH    = compact ? 168 : 358
+  const SVG_H = CY + CH + (compact ? 30 : 62)
+
   const windowEnd   = nowMs - viewOffset
   const windowStart = windowEnd - WINDOW_MS
 
@@ -58,8 +137,6 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
   const vals   = visible.map(p => p.val)
   const rawMin = vals.length ? Math.min(...vals) : 0
   const rawMax = vals.length ? Math.max(...vals) : 1
-  // Enforce a per-metric minimum span (centered on the data) so a steady
-  // reading shows as flat instead of zooming into sensor noise.
   const center = (rawMax + rawMin) / 2
   const span   = Math.max(rawMax - rawMin, cfg.minRange)
   const pad    = span * 0.15
@@ -80,7 +157,7 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
       ` L${pts[pts.length - 1].x.toFixed(1)},${CY + CH} Z`
   }
 
-  const yTicks   = [0, 0.25, 0.5, 0.75, 1].map(f => yMin + f * (yMax - yMin))
+  const yTicks   = [0, 0.5, 1].map(f => yMin + f * (yMax - yMin))
   const minMs    = 60 * 1000
   const firstMin = Math.ceil(windowStart / minMs) * minMs
   const xLabels: { x: number; label: string }[] = []
@@ -105,36 +182,25 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
     if (!panRef.current.active) return
     const dx   = e.clientX - panRef.current.startX
     const msPx = WINDOW_MS / CW
-    // natural drag: finger right → content moves right → older data (increase offset)
     setViewOffset(Math.max(0, Math.min(MAX_AGE_MS - WINDOW_MS, panRef.current.startOff + dx * msPx)))
   }
   const onPtrUp = () => { panRef.current.active = false }
 
+  const valSize = compact ? 46 : 84
+
   return (
     <div style={{
-      // Definite viewport-based size (the 565/800 center square) + 1px bleed on
-      // every side. We can't use inset:-1 / height:100% here: the center square's
-      // percentage-height chain collapses, so the absolute parent has no definite
-      // height and the chart SVG (flex:1) computes to 0px — the graph never shows.
-      // The +2px and -1 offset cover the subpixel seam from the square's
-      // fractional (translate -50%) centering.
-      position: 'absolute', top: -1, left: -1,
-      width:  'calc(min(100vw, 100vh) * 0.70625 + 2px)',
-      height: 'calc(min(100vw, 100vh) * 0.70625 + 2px)',
-      background: '#000',
-      zIndex: 1400,
-      display: 'flex',
-      flexDirection: 'column',
-      userSelect: 'none',
+      flex: 1, minHeight: 0,
+      display: 'flex', flexDirection: 'column',
+      borderTop: first ? 'none' : '1px solid rgba(255,255,255,0.1)',
     }}>
-
-      {/* ── TOP ROW: label / live status + buttons ── */}
+      {/* ── TOP ROW: label / live status + reset ── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 14px 0',
+        // reserve top-right room for the floating close button on the first pane
+        padding: first ? '12px 70px 0 14px' : '8px 14px 0',
         flexShrink: 0,
       }}>
-        {/* Label + live/time badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{
             fontSize: 12, fontWeight: 800, letterSpacing: 3,
@@ -146,63 +212,52 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
           }
         </div>
 
-        {/* Buttons */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {confirmReset ? (
             <>
-              <button onClick={() => setConfirmReset(false)} style={actionBtn('#2a2a2a', '#aaa')}>CANCEL</button>
+              <button onClick={() => setConfirmReset(false)} style={actionBtn('#2a2a2a', '#aaa', compact)}>CANCEL</button>
               <button
                 onClick={() => { clearMetric(metricKey); setConfirmReset(false) }}
-                style={actionBtn('#5c1010', '#ff6b6b')}
+                style={actionBtn('#5c1010', '#ff6b6b', compact)}
               >CONFIRM</button>
             </>
           ) : (
-            <button onClick={() => setConfirmReset(true)} style={actionBtn('#2a0808', '#ff6b6b')}>
+            <button onClick={() => setConfirmReset(true)} style={actionBtn('#2a0808', '#ff6b6b', compact)}>
               RESET
             </button>
           )}
-          <button
-            onPointerDown={closeHoldStart}
-            onPointerUp={closeHoldEnd}
-            onPointerLeave={closeHoldCancel}
-            style={closeBtn}
-            title="tap to close · hold to quit app"
-          >✕</button>
         </div>
       </div>
 
-      {/* ── CURRENT VALUE — big ── */}
+      {/* ── CURRENT VALUE ── */}
       <div style={{
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-        padding: '4px 14px 8px',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        padding: compact ? '2px 14px 4px' : '4px 14px 8px',
         flexShrink: 0,
       }}>
-        {/* Huge number */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
-            fontSize: 84, fontWeight: 900, color: 'white',
+            fontSize: valSize, fontWeight: 900, color: 'white',
             lineHeight: 0.88, fontFamily: 'monospace', letterSpacing: -3,
           }}>
             {current !== null ? cfg.fmtVal(current) : '--'}
           </span>
-          <span style={{ fontSize: 20, fontWeight: 600, color: '#555', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: compact ? 16 : 20, fontWeight: 600, color: '#555', fontFamily: 'monospace' }}>
             {cfg.unit}
           </span>
         </div>
 
-        {/* Min / max / count */}
         <div style={{ fontSize: 12, color: '#666', fontFamily: 'monospace', textAlign: 'right', lineHeight: 1.6 }}>
           {visMin !== null && <div><span style={{ color: '#888' }}>MIN </span>{cfg.fmtVal(visMin)}</div>}
           {visMax !== null && <div><span style={{ color: '#888' }}>MAX </span>{cfg.fmtVal(visMax)}</div>}
-          <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>{data.length} pts · drag ← →</div>
+          {!compact && <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>{data.length} pts · drag ← →</div>}
         </div>
       </div>
 
       {/* ── CHART ── */}
       <svg
         viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-        style={{ flex: 1, display: 'block', cursor: 'ew-resize', touchAction: 'none' }}
+        style={{ flex: 1, minHeight: 0, display: 'block', cursor: 'ew-resize', touchAction: 'none' }}
         preserveAspectRatio="xMidYMid meet"
         onPointerDown={onPtrDown}
         onPointerMove={onPtrMove}
@@ -270,48 +325,27 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
           const barX   = CX + CW - (viewOffset / Math.max(1, maxOff)) * (CW - barW) - barW
           return (
             <>
-              <rect x={CX} y={CY + CH + 26} width={CW} height={4} fill="rgba(255,255,255,0.05)" rx={2} />
-              <rect x={barX} y={CY + CH + 26} width={barW} height={4} fill={cfg.color} rx={2} opacity={0.45} />
+              <rect x={CX} y={CY + CH + 22} width={CW} height={4} fill="rgba(255,255,255,0.05)" rx={2} />
+              <rect x={barX} y={CY + CH + 22} width={barW} height={4} fill={cfg.color} rx={2} opacity={0.45} />
             </>
           )
         })()}
       </svg>
-
-      {/* Hold-✕-to-quit confirmation */}
-      {confirmQuit && (
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 500,
-          background: 'rgba(0,0,0,0.94)',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 8,
-        }}>
-          <div style={{ color: 'white', fontSize: 26, fontWeight: 800, fontFamily: 'sans-serif', letterSpacing: 0.5 }}>
-            Quit motoCarPlay?
-          </div>
-          <div style={{ color: '#888', fontSize: 12, fontFamily: 'monospace', marginBottom: 18 }}>
-            this closes the dashboard app
-          </div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <button onClick={() => setConfirmQuit(false)} style={actionBtn('#2a2a2a', '#ccc')}>CANCEL</button>
-            <button onClick={() => window.carplay.quit()} style={actionBtn('#5c1010', '#ff6b6b')}>QUIT</button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
 
 // ── Shared button styles ──────────────────────────────────────────────────────
 
-const actionBtn = (bg: string, fg: string): React.CSSProperties => ({
+const actionBtn = (bg: string, fg: string, compact = false): React.CSSProperties => ({
   background: bg,
   border: `2px solid ${fg}55`,
   color: fg,
   borderRadius: 16,
-  height: 64,
-  minWidth: 116,
-  padding: '0 26px',
-  fontSize: 15,
+  height: compact ? 50 : 64,
+  minWidth: compact ? 96 : 116,
+  padding: compact ? '0 18px' : '0 26px',
+  fontSize: compact ? 13 : 15,
   fontWeight: 800,
   letterSpacing: 2,
   cursor: 'pointer',
@@ -326,9 +360,9 @@ const closeBtn: React.CSSProperties = {
   border: '2px solid rgba(255,255,255,0.22)',
   color: 'white',
   borderRadius: '50%',
-  width: 64,
-  height: 64,
-  fontSize: 24,
+  width: 56,
+  height: 56,
+  fontSize: 22,
   fontWeight: 700,
   cursor: 'pointer',
   display: 'inline-flex',

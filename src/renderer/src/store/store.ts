@@ -84,6 +84,7 @@ export interface CarplayStore {
   gForceX: number | null     // G, lateral (positive = right)
   gForceY: number | null     // G, longitudinal (positive = forward)
   pitchAngle: number | null  // degrees, positive = nose up
+  piTemp: number | null      // celsius, Raspberry Pi CPU temperature
 }
 
 export const useCarplayStore = create<CarplayStore>((set) => ({
@@ -100,6 +101,7 @@ export const useCarplayStore = create<CarplayStore>((set) => ({
   pitchAngle: null,
   chtRight: null,
   ambientTemp: null,
+  piTemp: null,
   saveSettings: (settings) => {
     set({ settings })
     socket.emit('saveSettings', settings)
@@ -242,6 +244,10 @@ socket.on('cht', (data: { left: number | null; right: number | null }) => {
 socket.on('ambient', (temp: number) => {
   useCarplayStore.setState({ ambientTemp: temp })
   log('ambientTemp', toF(temp))
+})
+socket.on('pi-temp', (data: { cpu: number }) => {
+  useCarplayStore.setState({ piTemp: data.cpu })
+  log('piTemp', data.cpu)
 })
 socket.on('gforce', (data: { x: number; y: number }) => {
   useCarplayStore.setState({ gForceX: data.x, gForceY: data.y })

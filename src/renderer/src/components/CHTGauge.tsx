@@ -1,4 +1,5 @@
 import { useCarplayStore, useStatusStore } from '../store/store'
+import { useStableValue } from '../utils/smoothing'
 
 interface CHTGaugeProps {
   side: 'L' | 'R'
@@ -19,7 +20,9 @@ function tempColor(temp: number): string {
 }
 
 export default function CHTGauge({ side }: CHTGaugeProps) {
-  const temp        = useCarplayStore((s) => (side === 'L' ? s.chtLeft : s.chtRight))
+  const rawTemp     = useCarplayStore((s) => (side === 'L' ? s.chtLeft : s.chtRight))
+  // Reject single-frame spikes: a >3°C jump only shows after it holds ~3s.
+  const temp        = useStableValue(rawTemp, 3, 3000)
   const setActive = useStatusStore(s => s.setActiveGraph)
   const metricKey = side === 'L' ? 'chtLeft' : 'chtRight'
   const tap = () => {

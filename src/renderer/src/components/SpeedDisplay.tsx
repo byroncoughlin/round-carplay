@@ -1,4 +1,5 @@
 import { useCarplayStore, useStatusStore } from '../store/store'
+import { useSpeedStabilizer, useStableValue } from '../utils/smoothing'
 
 function toCardinal(deg: number): string {
   const cardinals = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -21,9 +22,13 @@ export default function SpeedDisplay() {
 
   // Without a satellite fix the speed/heading are stale/meaningless, so blank
   // them and show the acquiring indicator instead.
-  const speed    = gpsFix && speedKmh !== null ? Math.round(speedKmh * 0.621371) : null
-  const cardinal = gpsFix && heading  !== null ? toCardinal(heading) : null
-  const tempF    = ambientC !== null ? toF(ambientC) : null
+  // Speed is stabilized: stationary GPS noise reads 0, and a sustained climb is
+  // required to leave 0 (see useSpeedStabilizer).
+  const rawMph   = gpsFix && speedKmh !== null ? speedKmh * 0.621371 : null
+  const speed    = useSpeedStabilizer(rawMph)
+  const cardinal = gpsFix && heading !== null ? toCardinal(heading) : null
+  // Ambient is smoothed like the CHTs (reject >3°F single-reading jumps).
+  const tempF    = useStableValue(ambientC !== null ? toF(ambientC) : null, 3, 3000)
 
   // GPS status chip: hidden once we have a fix; otherwise "NO GPS" (no data yet)
   // or "ACQUIRING · n SAT" while the receiver searches for satellites.

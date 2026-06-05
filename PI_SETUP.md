@@ -104,7 +104,7 @@ Each script's header documents its exact wiring. Summary:
 | BNO055 IMU (lean/pitch/G) | `imu.py` | UART `/dev/ttyAMA0` | VIN→1, GND→6, **PS1→3.3V**, SDA→10 (RXD), SCL→8 (TXD) |
 | CHT left/right (MAX31855) | `cht_temp.py` | SPI0 | VIN→5V, GND, DO→21, CLK→23 (both shared via splitter), CS: left→24 (CE0), right→26 (CE1) |
 | Ambient (DS18B20, waterproof) | `ambient_temp.py` | 1-Wire | Data→7 (GPIO4), VCC→3.3V (Pin 17), GND, **4.7kΩ pull-up Data↔VCC** |
-| GPS (Adafruit Ultimate, USB) | `gps.py` | **USB** | Plug into any USB port — no GPIO wiring. Enumerates as `/dev/ttyUSB0`. *(pending hardware)* |
+| GPS (Adafruit Ultimate, USB) | `gps.py` | **USB** | Plug into any USB port — no GPIO wiring. CP210x bridge (`10c4:ea60`) → `/dev/ttyUSB0`, stable symlink `/dev/gps`. Emits `GN`-talker NMEA (GPS+GLONASS). |
 
 **Critical gotchas learned the hard way:**
 - **BNO055 PS1 must be jumpered to 3.3V** or it boots in I2C mode and is silent on UART.
@@ -253,32 +253,36 @@ the app's BMW roundel splash appears (no rainbow, no Pi logo, no default wallpap
 
 ---
 
-## 9. GPS (pending hardware — Adafruit Ultimate GPS USB)
+## 9. GPS (Adafruit Ultimate GPS USB) — installed
 
-When the GPS module arrives:
+Installed and verified (status `active`, connects to the app and reads NMEA;
+waits for a sky-view fix before emitting). How it was set up:
 
-1. **Plug it into any USB port.** Find the device:
-   ```bash
-   ls /dev/ttyUSB* /dev/ttyACM*    # usually /dev/ttyUSB0
-   dmesg | grep -i tty             # confirm + note the USB vendor/product id
-   lsusb                           # for the udev rule below
-   ```
-2. **Install the NMEA parser:**
+1. **Plugged into a USB port.** It enumerates as a Silicon Labs CP210x UART
+   bridge (`lsusb` → `10c4:ea60`) on `/dev/ttyUSB0`. (`stty -F /dev/ttyUSB0
+   9600; cat /dev/ttyUSB0` shows `$GNRMC`/`$GNGGA` sentences.)
+2. **NMEA parser:**
    ```bash
    pip install --user --break-system-packages pynmea2
    ```
-3. **Stable device name** — add `/etc/udev/rules.d/53-gps.rules` (fill in the
-   `idVendor`/`idProduct` from `lsusb`) so it's always `/dev/gps`:
+3. **Stable device name** — `/etc/udev/rules.d/53-gps.rules` → `/dev/gps`:
    ```udev
-   SUBSYSTEM=="tty", ATTRS{idVendor}=="XXXX", ATTRS{idProduct}=="XXXX", SYMLINK+="gps", MODE="0660", GROUP="dialout"
+   SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="gps", MODE="0660", GROUP="dialout"
    ```
    then `sudo udevadm control --reload-rules && sudo udevadm trigger`.
-4. **Deploy `gps.py`** to `/home/byron/sensors/` and add `gps.service`
-   (same systemd pattern; `ExecStart=… /home/byron/sensors/gps.py`), then
-   `systemctl --user enable --now gps.service`.
-5. **First fix** outdoors with sky view can take 1–2 min (cold start). The
-   `gps` event then drives speed/heading (`SpeedDisplay`) and altitude
-   (`LeanAngle`) — already wired in the UI.
+4. **Service** `~/.config/systemd/user/gps.service` (same pattern as the other
+   sensors; `ExecStart=/usr/bin/python3 /home/byron/sensors/gps.py`), enabled:
+   ```bash
+   systemctl --user enable --now gps.service
+   ```
+5. **First fix** outdoors with sky view can take 1–2 min (cold start). Until
+   then RMC status is `V` (void) and nothing is emitted. Once fixed, the `gps`
+   event drives speed/heading (`SpeedDisplay`) and altitude (`LeanAngle`) — and
+   the speed/heading/altitude graphs start logging.
+
+> The module emits combined-constellation `GN` talker sentences (GPS+GLONASS).
+> `pynmea2` parses `GNRMC`/`GNGGA` to the same `RMC`/`GGA` types `gps.py`
+> checks, so no code change was needed.
 
 > The module defaults to 1 Hz, which is fine for a dash. For higher rates,
 > enable `configure_10hz()` in `gps.py` **and** raise `BAUD` to 38400 (10 Hz of

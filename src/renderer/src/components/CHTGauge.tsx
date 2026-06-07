@@ -6,11 +6,15 @@ interface CHTGaugeProps {
 }
 
 const MAX_TEMP = 300
-const BAR_H   = 240
 const BAR_W   = 70
 const VW      = 110
-const VH      = 320
-const BAR_Y   = 10
+// Long bar that fills the tall arc, with the temp number below it. BAR_Y (space
+// above) is matched to the space below the bar (number region) so the bar's
+// midpoint sits at the arc's vertical center — i.e. the gauge reads centered.
+const BAR_H   = 300   // was 240 — longer, extends toward the bottom (but kept
+                      // within the round display's clip at the left/right edge)
+const BAR_Y   = 115   // top padding == bottom (number) padding -> bar centered
+const VH      = 530   // 2*BAR_Y + BAR_H; fits the number below, no circle clip
 
 function tempColor(temp: number): string {
   if (temp < 80)  return '#4fc3f7'

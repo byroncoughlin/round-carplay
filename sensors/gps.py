@@ -18,6 +18,10 @@ Emits the 'gps' event in the units store.ts expects:
   - RMC sentence → ground speed (knots × 1.852 → km/h) + true course (heading)
   - GGA sentence → altitude (meters) + fix quality / satellite count
 
+Also sets the system clock from GPS UTC on the first valid fix if it's grossly
+wrong — a no-WiFi safety net for travel (see maybe_set_clock). Needs passwordless
+sudo for `date`/`hwclock` (already granted on the Pi).
+
 Systemd service: ~/.config/systemd/user/gps.service
 
 Rate note: the module powers up at 1 Hz / 9600 baud, which is plenty for a
@@ -31,12 +35,52 @@ import glob
 import serial
 import pynmea2
 import socketio
+import subprocess
+import datetime
 
 SERVER_URL = 'http://localhost:4000'
 BAUD       = 9600   # module default; raise (e.g. 38400) only if going high-Hz
 
 # Try a stable udev symlink first, then common USB-serial device names.
 PORT_CANDIDATES = ['/dev/gps', '/dev/ttyUSB0', '/dev/ttyACM0']
+
+# --- GPS clock set (no-network safety net) ----------------------------------
+# Without WiFi the Pi boots with a stale clock (until the RTC battery is in and
+# charged). GPS RMC sentences carry UTC date+time, so on a VALID fix we set the
+# system clock ONCE if it's grossly wrong. Guardrails: valid fix only (status
+# 'A'); only act when off by more than CLOCK_SKEW_TOLERANCE (so we never fight
+# WiFi NTP when home); set at most once per process run (no repeated jumping).
+CLOCK_SKEW_TOLERANCE = 120  # seconds — within this, leave the clock alone
+_clock_synced = False       # True once set (or found already good) this run
+
+
+def maybe_set_clock(gps_dt_utc):
+    """gps_dt_utc: tz-aware UTC datetime from a VALID RMC. Sets the system clock
+    once if it disagrees with GPS by more than the tolerance, then writes the
+    new time into the hardware RTC (persists across power-off once a battery is
+    fitted). No-op after the first call that resolves the clock."""
+    global _clock_synced
+    if _clock_synced:
+        return
+    now  = datetime.datetime.now(datetime.timezone.utc)
+    skew = abs((now - gps_dt_utc).total_seconds())
+    if skew <= CLOCK_SKEW_TOLERANCE:
+        # already close — NTP or the RTC battery did its job; stop checking
+        _clock_synced = True
+        print(f'[gps] clock OK (skew {skew:.0f}s) — not setting', flush=True)
+        return
+    stamp = gps_dt_utc.strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        # interpret the stamp as UTC; the system applies its timezone for display
+        subprocess.run(['sudo', 'date', '-u', '-s', stamp],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        # push system time into the RTC (best effort — helps once a battery is in)
+        subprocess.run(['sudo', 'hwclock', '-w'],
+                       check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        _clock_synced = True
+        print(f'[gps] clock was off by {skew:.0f}s — set to {stamp} UTC from GPS', flush=True)
+    except Exception as e:
+        print(f'[gps] failed to set clock from GPS: {e}', flush=True)
 
 sio = socketio.Client(reconnection=True, reconnection_attempts=0)
 
@@ -109,6 +153,13 @@ def main():
                     # status 'A' = valid fix, 'V' = void
                     if msg.status == 'A':
                         have_fix = True
+                        # one-shot: correct a stale clock from GPS UTC (no-WiFi
+                        # safety net). datestamp/timestamp are present on a valid
+                        # RMC; combine into a UTC datetime and set once if wrong.
+                        if msg.datestamp is not None and msg.timestamp is not None:
+                            maybe_set_clock(datetime.datetime.combine(
+                                msg.datestamp, msg.timestamp,
+                                tzinfo=datetime.timezone.utc))
                         if msg.spd_over_grnd is not None:
                             last['speed'] = round(float(msg.spd_over_grnd) * 1.852, 1)
                         if msg.true_course is not None:   # only valid while moving

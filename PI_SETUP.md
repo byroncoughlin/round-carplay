@@ -311,3 +311,40 @@ waits for a sky-view fix before emitting). How it was set up:
 > enable `configure_10hz()` in `gps.py` **and** raise `BAUD` to 38400 (10 Hz of
 > NMEA does not fit 9600 baud).
 
+### GPS clock set (no-WiFi time fix)
+
+The Pi has no correct time on a cold boot until it reaches WiFi NTP (or the RTC
+battery below is fitted). To cover the off-grid case, `gps.py` sets the system
+clock from GPS UTC: on the **first valid fix** (RMC status `A`), if the clock is
+off by more than `CLOCK_SKEW_TOLERANCE` (120 s) it runs `sudo date -u -s …` then
+`sudo hwclock -w` (persist to the RTC), **once per run**. Guardrails mean it
+never fires when the clock is already right (so it won't fight WiFi NTP) and
+never repeatedly jumps. Accuracy is ~±1 s from the 1 Hz NMEA timestamp — fine
+for a dash clock.
+
+- Needs passwordless sudo for `date`/`hwclock` (byron has `NOPASSWD: ALL`).
+- `hwclock` lives in the **`util-linux-extra`** package on Trixie (not in base):
+  `sudo apt-get install -y util-linux-extra`. Without it the `hwclock -w` step is
+  a harmless no-op (the `date` set still works).
+- Needs a sky-view fix first (1–2 min cold start), so on its own the clock is
+  briefly wrong at boot — which is why the RTC battery below is the primary fix.
+
+### RTC battery (Pi 5) — primary cold-boot time fix
+
+The Pi 5 has an onboard RTC (`/dev/rtc0`) and a dedicated 2-pin battery header
+(J5, next to USB-C). Fit the **official Raspberry Pi RTC Battery** (rechargeable
+ML2032) and the clock keeps correct time across power-off — right at boot, no
+sky view, no network.
+
+**Enable trickle-charging ONLY after the battery is physically connected** (the
+charge line is meaningless with no battery, and must never charge a
+non-rechargeable cell). Add to `/boot/firmware/config.txt`, then reboot:
+
+```
+# trickle-charge the rechargeable RTC battery to ~3.0 V
+dtparam=rtc_bbat_vchg=3000000
+```
+
+Verify after: `sudo hwclock -r` reads correct time, and after a power-off of a
+few minutes the clock is still right on the next boot (no WiFi needed).
+

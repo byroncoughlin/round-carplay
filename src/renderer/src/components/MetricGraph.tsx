@@ -253,8 +253,8 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
         </div>
 
         <div style={{ fontSize: 12, color: '#666', fontFamily: 'monospace', textAlign: 'right', lineHeight: 1.6 }}>
-          {visMin !== null && <div><span style={{ color: '#888' }}>MIN </span>{cfg.fmtVal(visMin)}</div>}
           {visMax !== null && <div><span style={{ color: '#888' }}>MAX </span>{cfg.fmtVal(visMax)}</div>}
+          {visMin !== null && <div><span style={{ color: '#888' }}>MIN </span>{cfg.fmtVal(visMin)}</div>}
           {!compact && <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>{data.length} pts · drag ← →</div>}
         </div>
       </div>

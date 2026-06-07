@@ -39,12 +39,16 @@ SERVER_URL = 'http://localhost:4000'
 # high-thermal-mass cylinder head. The real fix is the dead board on the bus.
 MEDIAN_WINDOW = 9
 
-# A cylinder head is never meaningfully colder than the board's cold-junction
-# (≈ ambient) — the engine only adds heat. So a thermocouple reading this far
-# *below* the chip's internal temperature is bus corruption, not a real value.
-# This catches the low/zero/negative garbage (worst right after boot) at the
-# source, self-calibrating to ambient instead of using a fixed floor.
-MIN_BELOW_INTERNAL = 10.0   # deg C
+# Bus corruption (from the dead/absent right board on the shared MISO) shows up
+# as wildly-low/negative thermocouple values while the chip's own internal die
+# temperature stays believable. Reject a reading only when it sits this far
+# *below* the internal temp — that still catches the deep garbage (-15/-20 °C at
+# boot) but must tolerate a large legit gap: inside the case the board's die runs
+# hot (Pi heat, enclosed air, e.g. ~35–55 °C) while the thermocouple sits on a
+# cold/off engine near ambient. A tight margin here wrongly nukes that real
+# reading. The sliding MedianFilter is the primary defense against bursts; this
+# is just a backstop for the deepest corruption.
+MIN_BELOW_INTERNAL = 40.0   # deg C
 
 sio = socketio.Client(reconnection=True, reconnection_attempts=0)
 

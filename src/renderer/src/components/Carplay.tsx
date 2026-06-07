@@ -146,6 +146,17 @@ const Carplay: React.FC<CarplayProps> = ({
     return () => renderWorkerRef.current?.removeEventListener('message', handler)
   }, [])
 
+  // Enable/disable the ambient backdrop frame tap from the BACKDROP setting
+  // (default on). Re-sent whenever the worker (re)becomes ready or the setting
+  // changes, so the worker stops sampling frames when the backdrop is off.
+  useEffect(() => {
+    if (!renderReady) return
+    renderWorkerRef.current?.postMessage({
+      type: 'set-backdrop',
+      enabled: settings.backdropEnabled !== false,
+    })
+  }, [renderReady, settings.backdropEnabled])
+
   // Preload-Chunks fwd to Worker-Port
   useEffect(() => {
     const handleVideo = (packet: any) => {

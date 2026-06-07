@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useBackdrop } from '../store/backdrop'
-import { useStatusStore } from '../store/store'
+import { useCarplayStore, useStatusStore } from '../store/store'
 
 // Blurred "ambient fill" backdrop — paints a scaled-up, heavily-blurred copy of
 // the live CarPlay frame across the whole round display so the dead space around
@@ -18,7 +18,9 @@ export default function BackdropGlow() {
   const hasContentRef = useRef(false)
   const isStreaming = useStatusStore((s) => s.isStreaming)
   const homeMode = useStatusStore((s) => s.homeMode)
-  const visible = isStreaming && !homeMode
+  // BACKDROP setting (default on). When off, the layer is removed entirely.
+  const enabled = useCarplayStore((s) => s.settings?.backdropEnabled !== false)
+  const visible = enabled && isStreaming && !homeMode
 
   useEffect(() => {
     const draw = (bmp: ImageBitmap | null) => {
@@ -70,6 +72,8 @@ export default function BackdropGlow() {
         width: '100%',
         height: '100%',
         zIndex: 0,
+        // off → removed from compositing entirely (no blur cost); on → fade
+        display: enabled ? 'block' : 'none',
         opacity: visible ? 1 : 0,
         transition: 'opacity 0.5s ease',
         // "dreamy" look: heavy blur + slight overscale for a smooth ambient halo

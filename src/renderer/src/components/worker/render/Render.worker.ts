@@ -13,9 +13,8 @@ const scope = self as unknown as Worker
 // --- Ambient "blurred fill" backdrop -------------------------------------------
 // Emit a small, throttled snapshot of the live frame so the main thread can
 // paint a blurred, scaled-up copy behind the gauges (fills the round display).
-// Heavily downscaled — the blur hides it and it keeps the Pi cheap. Flip
-// BACKDROP_ENABLED to false to disable the whole feature at the source.
-const BACKDROP_ENABLED = true
+// Heavily downscaled — the blur hides it and it keeps the Pi cheap. Toggled at
+// runtime from the renderer (Settings → BACKDROP) via a 'set-backdrop' message.
 const BACKDROP_INTERVAL_MS = 100   // ~10 fps — more steps for the temporal blend
 const BACKDROP_WIDTH = 96          // px; height scaled to keep aspect
 
@@ -38,6 +37,11 @@ export class RendererWorker {
   private lastRenderTime: number = 0
   private frameInterval: number = 1000 / 60 // 60Hz
   private lastBackdropTime = 0
+  private backdropEnabled = true
+
+  setBackdrop = (enabled: boolean) => {
+    this.backdropEnabled = enabled
+  }
 
   constructor() {
     this.decoder = new VideoDecoder({
@@ -81,7 +85,7 @@ export class RendererWorker {
       // Ambient backdrop tap — clone BEFORE draw() (which closes the frame),
       // downscale, and hand a small bitmap to the main thread. Best-effort:
       // any failure is swallowed so it can never disrupt video.
-      if (BACKDROP_ENABLED && now - this.lastBackdropTime >= BACKDROP_INTERVAL_MS) {
+      if (this.backdropEnabled && now - this.lastBackdropTime >= BACKDROP_INTERVAL_MS) {
         this.lastBackdropTime = now
         try {
           const clone = frame.clone()
@@ -320,6 +324,8 @@ const worker = new RendererWorker()
 scope.addEventListener('message', (event: MessageEvent<WorkerEvent>) => {
   if (event.data.type === 'init') {
     worker.init(event.data as InitEvent & { platform?: string })
+  } else if ((event.data as any).type === 'set-backdrop') {
+    worker.setBackdrop((event.data as any).enabled)
   }
 })
 

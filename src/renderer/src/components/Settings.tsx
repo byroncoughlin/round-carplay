@@ -227,6 +227,7 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
             { label: 'KIOSK',       key: 'kiosk',             val: activeSettings.kiosk },
             { label: 'DARK MODE',   key: 'nightMode',          val: activeSettings.nightMode },
             { label: 'NO AUDIO',    key: 'audioTransferMode',  val: activeSettings.audioTransferMode },
+            { label: 'BACKDROP',    key: 'backdropEnabled',    val: activeSettings.backdropEnabled !== false },
             { label: 'SAMPLE DATA', key: null,                 val: showDiagnostics },
           ].map(({ label, key, val }) => (
             <FormControlLabel key={label}

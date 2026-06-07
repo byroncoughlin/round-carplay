@@ -11,6 +11,9 @@ export type ExtraConfig = DongleConfig & {
   // level; subtracted from live readings so a non-level mount reads zero.
   leanOffset: number;
   pitchOffset: number;
+  // Blurred ambient backdrop behind the gauges. Optional/undefined = on
+  // (default), false = off (frees the GPU blur + the worker frame tap).
+  backdropEnabled?: boolean;
 }
 
 export interface KeyBindings {

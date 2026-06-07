@@ -4,6 +4,7 @@ import { CommandMapping } from '../../../main/carplay/messages/common'
 
 import { ExtraConfig } from '../../../main/Globals'
 import { useCarplayStore, useStatusStore } from '../store/store'
+import { useBackdrop } from '../store/backdrop'
 import { InitEvent, Renderer } from './worker/render/RenderEvents'
 import useCarplayAudio from './useCarplayAudio'
 import { useCarplayTouch } from './useCarplayTouch'
@@ -137,6 +138,8 @@ const Carplay: React.FC<CarplayProps> = ({
       if (ev.data?.type === 'render-ready') {
         console.log('[CARPLAY] Render worker ready message recived')
         setRenderReady(true)
+      } else if (ev.data?.type === 'backdrop-frame') {
+        useBackdrop.getState().setFrame(ev.data.bitmap as ImageBitmap)
       }
     }
     renderWorkerRef.current.addEventListener('message', handler)
@@ -466,6 +469,10 @@ const Carplay: React.FC<CarplayProps> = ({
           padding: 0,
           margin: 0,
           display: 'flex',
+          // Round off CarPlay's baked-in black corners so the blurred backdrop
+          // shows through them instead of black notches against the glow.
+          borderRadius: receivingVideo ? 36 : 0,
+          overflow: 'hidden',
           visibility: receivingVideo ? 'visible' : 'hidden',
           zIndex: receivingVideo ? 1 : -1
         }}
@@ -475,7 +482,10 @@ const Carplay: React.FC<CarplayProps> = ({
           id="video"
           style={{
             width: receivingVideo ? '100%' : '0',
-            height: receivingVideo ? '100%' : '0'
+            height: receivingVideo ? '100%' : '0',
+            // overscan ~1% so the sub-pixel centering seam on the left/top edge
+            // is covered (cropped under overflow:hidden)
+            transform: receivingVideo ? 'scale(1.01)' : undefined,
           }}
         />
       </div>

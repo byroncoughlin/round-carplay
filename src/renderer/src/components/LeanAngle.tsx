@@ -7,7 +7,10 @@ const CX          = W / 2
 const PITCH_SCALE = 2.5      // px per degree of pitch
 const REF_Y       = H / 2   // fixed aircraft reference at vertical center
 
-const SKY    = '#000000'
+// 'sky' is transparent so the blurred ambient backdrop shows through the upper
+// half of the attitude indicator instead of a black block; the brown 'ground'
+// still carries the lean/pitch reading.
+const SKY    = 'transparent'
 const GROUND = '#5c3412'
 const REF    = '#ffd700'     // classic aviation gold
 

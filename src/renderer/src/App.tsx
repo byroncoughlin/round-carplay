@@ -12,6 +12,7 @@ import LeanAngle from './components/LeanAngle';
 import CHTGauge from './components/CHTGauge';
 import DevPanel from './components/DevPanel';
 import MetricGraph from './components/MetricGraph';
+import BackdropGlow from './components/BackdropGlow';
 import { Box, Modal } from '@mui/material';
 import { useCarplayStore, useStatusStore } from "./store/store";
 import type { KeyCommand } from "./components/worker/types";
@@ -104,6 +105,10 @@ function App() {
             backgroundColor: 'black',
           }}
         >
+          {/* Ambient blurred-video fill — sits behind the center square (z5)
+              and gauges (z10), filling the round display with on-screen color */}
+          <BackdropGlow />
+
           {/* Top arc — GPS Speed */}
           <div style={{
             position: 'absolute',
@@ -113,6 +118,7 @@ function App() {
             width: SQUARE,
             height: ARC,
             zIndex: 10,
+            filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.92))',
           }}>
             <SpeedDisplay />
           </div>
@@ -126,6 +132,7 @@ function App() {
             width: SQUARE,
             height: ARC,
             zIndex: 10,
+            filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.92))',
           }}>
             <LeanAngle />
           </div>
@@ -139,6 +146,7 @@ function App() {
             width: ARC,
             height: SQUARE,
             zIndex: 10,
+            filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.92))',
           }}>
             <CHTGauge side="L" />
           </div>
@@ -152,6 +160,7 @@ function App() {
             width: ARC,
             height: SQUARE,
             zIndex: 10,
+            filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.92))',
           }}>
             <CHTGauge side="R" />
           </div>
@@ -168,8 +177,14 @@ function App() {
               transform: 'translate(-50%, -50%)',
               width: SQUARE,
               height: SQUARE,
-              backgroundColor: 'black',
+              // transparent (was black) so the blurred backdrop shows through the
+              // video's rounded corners and the 1px sub-pixel centering seam
+              backgroundColor: 'transparent',
               zIndex: 5,
+              // round every view in the square (CarPlay, graphs, settings, idle)
+              // to match the video card + outer shadow ring
+              borderRadius: 36,
+              overflow: 'hidden',
             }}
           >
             <div className="w-full h-full flex items-center justify-center" style={{ position: 'relative' }}>
@@ -203,6 +218,27 @@ function App() {
               )}
             </div>
           </div>
+
+          {/* Outer shadow ring — lifts the CarPlay square off the blurred
+              backdrop. Sized to the square and matched to the video's 36px
+              rounded corners, placed ABOVE the gauges (z11 > arcs z10) so the
+              soft shadow shows on all four sides, not just the open corners.
+              Transparent + non-interactive so it never blocks touch or pixels. */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: SQUARE,
+              height: SQUARE,
+              borderRadius: 36,
+              background: 'transparent',
+              pointerEvents: 'none',
+              zIndex: 11,
+              boxShadow: '0 0 20px 2px rgba(0,0,0,0.32)',
+            }}
+          />
         </div>
       </div>
     </Router>

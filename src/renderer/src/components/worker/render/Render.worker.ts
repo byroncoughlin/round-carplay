@@ -10,6 +10,15 @@ export interface FrameRenderer {
 
 const scope = self as unknown as Worker
 
+// --- Ambient "blurred fill" backdrop -------------------------------------------
+// Emit a small, throttled snapshot of the live frame so the main thread can
+// paint a blurred, scaled-up copy behind the gauges (fills the round display).
+// Heavily downscaled — the blur hides it and it keeps the Pi cheap. Flip
+// BACKDROP_ENABLED to false to disable the whole feature at the source.
+const BACKDROP_ENABLED = true
+const BACKDROP_INTERVAL_MS = 100   // ~10 fps — more steps for the temporal blend
+const BACKDROP_WIDTH = 96          // px; height scaled to keep aspect
+
 export class RendererWorker {
   private readonly vendorHeaderSize = 20
   private renderer: FrameRenderer | null = null
@@ -28,6 +37,7 @@ export class RendererWorker {
   private renderScheduled = false
   private lastRenderTime: number = 0
   private frameInterval: number = 1000 / 60 // 60Hz
+  private lastBackdropTime = 0
 
   constructor() {
     this.decoder = new VideoDecoder({
@@ -67,7 +77,30 @@ export class RendererWorker {
     }
 
     if (this.pendingFrame) {
-      this.renderer?.draw(this.pendingFrame)
+      const frame = this.pendingFrame
+      // Ambient backdrop tap — clone BEFORE draw() (which closes the frame),
+      // downscale, and hand a small bitmap to the main thread. Best-effort:
+      // any failure is swallowed so it can never disrupt video.
+      if (BACKDROP_ENABLED && now - this.lastBackdropTime >= BACKDROP_INTERVAL_MS) {
+        this.lastBackdropTime = now
+        try {
+          const clone = frame.clone()
+          const fw = clone.displayWidth || 1
+          const fh = clone.displayHeight || 1
+          const th = Math.max(1, Math.round(BACKDROP_WIDTH * (fh / fw)))
+          createImageBitmap(clone, {
+            resizeWidth: BACKDROP_WIDTH,
+            resizeHeight: th,
+            resizeQuality: 'low',
+          })
+            .then((bmp) => scope.postMessage({ type: 'backdrop-frame', bitmap: bmp }, [bmp]))
+            .catch(() => {})
+            .finally(() => clone.close())
+        } catch {
+          /* clone unsupported / frame already gone — skip this snapshot */
+        }
+      }
+      this.renderer?.draw(frame)
       this.pendingFrame = null
       this.lastRenderTime = now
     }

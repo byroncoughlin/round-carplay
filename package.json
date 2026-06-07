@@ -1,10 +1,10 @@
 {
   "name": "round-carplay",
   "version": "0.1.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "motoCarPlay — round-display CarPlay dash with motorcycle sensor overlays for a BMW R75/6",
   "main": "./out/main/main.js",
-  "author": "Lasse Heitgres",
-  "homepage": "https://f-io.dev",
+  "author": "Byron Coughlin",
+  "homepage": "https://github.com/byroncoughlin/round-carplay",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",

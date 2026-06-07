@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: pi-carplay
+productName: motoCarPlay
 
 directories:
   buildResources: assets
@@ -27,10 +27,10 @@ mac:
   icon: icons/mac/pi-carplay.icns
   category: public.app-category.utilities
   extendInfo:
-    NSCameraUsageDescription: pi-carplay requires camera access for CarPlay.
-    NSMicrophoneUsageDescription: pi-carplay requires microphone access for voice control.
-    NSDocumentsFolderUsageDescription: pi-carplay requires access to documents.
-    NSDownloadsFolderUsageDescription: pi-carplay requires access to downloads.
+    NSCameraUsageDescription: motoCarPlay requires camera access for CarPlay.
+    NSMicrophoneUsageDescription: motoCarPlay requires microphone access for voice control.
+    NSDocumentsFolderUsageDescription: motoCarPlay requires access to documents.
+    NSDownloadsFolderUsageDescription: motoCarPlay requires access to downloads.
     
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}

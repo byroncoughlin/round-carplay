@@ -1,212 +1,272 @@
 <p align="center">
-  <img alt="License" src="https://img.shields.io/github/license/OneMakerShow/round-carplay">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Raspberry%20Pi%205-c51a4a">
+  <img alt="OS" src="https://img.shields.io/badge/OS-Raspberry%20Pi%20OS%20(Trixie)-a80030">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
-# Round CarPlay — BMW R75/6 Fork
+# motoCarPlay
 
-> **This is a fork of [OneMakerShow/round-carplay](https://github.com/OneMakerShow/round-carplay), customized for an R75/6.**
->
-> All credit for the base CarPlay implementation goes to the original authors. This fork adds a sensor overlay UI and Pi-side hardware integration for standalone motorcycle use.
+**A round-display Apple CarPlay dashboard with live motorcycle instrumentation, built for a 1976 BMW R75/6.**
+
+CarPlay runs in a centered square on an 800×800 round screen; the curved space
+around it is filled with sensor data read straight off the bike — cylinder-head
+temps, lean/pitch/G, GPS speed & heading, ambient + Pi temperature — plus an
+ambient blurred backdrop that bleeds the on-screen color out to the bezel.
+
+<p align="center">
+  <img src="documentation/images/dashboard.png" alt="motoCarPlay dashboard" width="48%" />
+</p>
+
+> 📷 _On-bike photos of the display mounted in the R75/6 dash coming soon._
+<!-- Add real mounted/riding photos here, e.g. documentation/images/bike-01.jpg -->
+
+> **Heads-up — this is a personal build.** It's a hard fork of
+> [OneMakerShow/round-carplay](https://github.com/OneMakerShow/round-carplay)
+> (itself based on [pi-carplay](https://github.com/f-io/pi-carplay)), rewritten
+> around discrete sensors instead of an OBD/CAN bus. The R75/6 has no OBD port,
+> so every reading comes from a sensor wired to the Pi. Full credit for the base
+> CarPlay engine goes to those upstream projects.
 
 ---
 
-## What This Fork Adds
+## What it does
 
-The original project displays CarPlay on a round screen with OBD data in the surrounding arcs. Since the BMW R75/6 has no OBD port, this fork replaces the OBD layer with data from discrete sensors wired directly to the Raspberry Pi.
+### CarPlay, centered in the circle
 
-### Instrument Overlay Layout
+Wireless CarPlay (via a Carlinkit adapter) renders in a **565×565px** square —
+the largest square that fits inside the 800px circle — with a rounded card and a
+soft outer shadow. The four curved segments around it are the instrument cluster:
 
-CarPlay runs in a centered 565×565px square (the largest square inscribed in an 800px circle). The four arc segments around it show:
-
-| Position | Display |
+| Arc | Shows |
 |---|---|
-| Top | GPS speed (mph), compass heading, ambient temperature |
-| Bottom | Inclinometer — lean angle needle with tick marks, pitch angle, altitude, G-force bubble plot |
-| Left | Cylinder head temperature — left jug (bar gauge, color-coded) |
-| Right | Cylinder head temperature — right jug (bar gauge, color-coded) |
+| **Top** | GPS speed (mph) · compass heading · ambient temperature (tap → graph) |
+| **Bottom** | Lean-angle inclinometer (needle + tick marks) · pitch · altitude · G-force |
+| **Left / Right** | Cylinder-head temperature, one bar gauge per jug, color-coded by heat |
 
-### Hardware
+### Ambient blurred backdrop
 
-All sensors connect to the Raspberry Pi GPIO. No OBD adapter or CAN bus required.
+Instead of dead black around the square, motoCarPlay samples the live CarPlay
+frame, downscales it, and paints a heavily-blurred, scaled-up copy across the
+whole round display — the same trick used to letterbox vertical video. Each new
+frame is **eased onto the previous one** (a temporal crossfade) so the glow flows
+softly instead of strobing when something colorful scrolls on screen. The result
+is a "dreamy" halo that makes the round bezel feel like part of the screen. It's
+a one-tap toggle in Settings (**BACKDROP**), and costs almost nothing — the
+sample runs at ~10 fps on a tiny canvas.
 
-| Sensor | Part | Interface | Notes |
-|---|---|---|---|
-| GPS (speed, heading, altitude) | Adafruit Ultimate GPS with USB | USB | 10Hz update rate, plug-and-play |
-| External GPS antenna | Adafruit active antenna + uFL→SMA cable | — | Better sky view when mounted under fairing |
-| Lean angle + G-force + pitch | Adafruit BNO055 9-DOF IMU | I2C (pins 3, 5) | Built-in sensor fusion, outputs absolute orientation |
-| Ambient temperature | DS18B20 waterproof probe | 1-Wire (pin 7) | Stainless steel probe, includes pull-up resistor |
-| Cylinder head temp ×2 | K-type thermocouple spark plug gaskets (14mm) | — | Clamp under spark plug, one per cylinder |
-| CHT amplifiers ×2 | MAX31855 breakout boards | SPI | One per thermocouple |
+You can see the warm glow bleeding into the bezel in every screenshot on this page.
 
-### Spark Plug Size
+### Live graphing with risk zones
 
-The R75/6 uses **14mm** spark plugs — the thermocouple gasket adapters listed above are the correct fit.
+Tap any metric to open a full-screen graph over the CarPlay card: a big live
+number, rolling **MIN / MAX**, a **RESET**, and a scrollable history. Graphs that
+matter for engine/board health get **color risk bands** painted under the trace:
 
----
+| Metric | Bands |
+|---|---|
+| **Cylinder-head temp** | cold (blue) → normal (green) → warm (amber) → hot (red) |
+| **Pi CPU temp** | healthy (green) → warm (amber) → throttle (red) |
 
-# Round Carplay
-
-Round Caraplay is an attempt to adapt the classic Apple CarPlay to a round screen using a Raspberry Pi. The idea is to display CarPlay in a central square area and then fill the surrounding space with information coming from the vehicle’s OBD bus.
-
-Support for Linux (ARM/x86) and macOS (ARM) as well. It is a standalone Electron app, optimized for embedded setups and ultra-low-resolution OEM displays.  
-
-> **Requirements:** A Carlinkit **CPC200-CCPA** (wireless & wired) or **CPC200-CCPW** (wired only) adapter.
-## Installation (Raspberry Pi OS)
-
-```bash
-curl -LO https://raw.githubusercontent.com/OneMakerShow/round-carplay/main/setup-pi.sh
-sudo chmod +x setup-pi.sh
-./setup-pi.sh
-```
-
-The `setup-pi.sh` script performs the following tasks:
-
-1. check for required tools: curl and xdg-user-dir
-2. configures udev rules to ensure the proper access rights for the CarPlay dongle
-3. downloads the latest AppImage
-4. creates an autostart entry, so the application will launch automatically on boot
-5. creates a desktop shortcut for easy access to the application
-
-*Do not run this script on other Linux distributions.*
-
-## Images
-<p align="center">
-  <strong><span style="font-size:20px;">Reference, Mini Cooper Navigator System</span></strong>
-</p>
+Tapping the **ambient** reading splits the screen into a **dual graph** —
+ambient on top, **Pi CPU temperature** on the bottom — so you can keep an eye on
+how hard the Pi is working inside a sealed case while you ride.
 
 <p align="center">
-  <img src="documentation/images/reference.jpg"
-       alt="CarPlay"
-       width="45%" />
+  <img src="documentation/images/graph-split.png" alt="Ambient + Pi CPU split graph" width="32%" />
+  &emsp;
+  <img src="documentation/images/graph-cht.png" alt="Cylinder-head temp graph with risk band" width="32%" />
 </p>
 
-<p align="center">
-  <strong><span style="font-size:20px;">Real Device First Tests</span></strong>
-</p>
+### Keeps the right time without WiFi
 
-<p align="center">
-  <img src="documentation/images/01.jpg"
-       alt="Settings"
-       width="20%" />
-  &emsp;&emsp;
-  <img src="documentation/images/02.jpg"
-       alt="Settings"
-       width="20%" />
-    &emsp;&emsp;
-  <img src="documentation/images/03.jpg"
-       alt="Settings"
-       width="20%" />
-    &emsp;&emsp;
-  <img src="documentation/images/04.jpg"
-       alt="Settings"
-       width="20%" />
-</p>
+A Raspberry Pi has no clock when it's powered off. motoCarPlay fixes that two
+ways: the **Pi 5 RTC battery** keeps correct time across power-off (right at
+boot, no network), and as an off-grid backup, `gps.py` **sets the system clock
+from GPS UTC** on the first valid fix if it's grossly wrong — so the dash time is
+correct even with no cell or WiFi for days. See
+[`PI_SETUP.md`](PI_SETUP.md#gps-clock-set-no-wifi-time-fix) for details.
 
+### Other touches
 
-### System Requirements (build)
-
-Make sure the following packages and tools are installed on your system before building:
-
-- **Python 3.x** (for native module builds via `node-gyp`)
-- **build-essential** (Linux: includes `gcc`, `g++`, `make`, etc.)
-- **libusb-1.0-0-dev** (required for `node-usb`)
-- **libudev-dev** (optional but recommended for USB detection on Linux)
-- **fuse** (required to run AppImages)
+- **Pi health** — on-die CPU temperature is read and shown under the ambient
+  reading (and graphed), so thermal throttling never sneaks up on you.
+- **Rounded everything** — graphs, settings, and the idle view all share the
+  CarPlay card's rounded corners + outer shadow for a single cohesive surface.
+- **Kiosk-ready** — hides nav chrome for a clean, pure-dashboard look once dialed in.
 
 ---
 
-### Clone & Build
+## The build (bill of materials)
 
-```bash
-git clone --branch main --single-branch https://github.com/OneMakerShow/round-carplay.git \
-  && cd pi-carplay \
-  && npm run install:clean \
-  && npm run build \
-  && npm run build:armLinux
-```
+Everything connects to the Pi's GPIO/USB — **no OBD adapter, no CAN bus**. Prices
+are what I actually paid (USD); your mileage will vary.
+
+### Compute & display
+
+| Part | What I used | Qty | Price |
+|---|---|--:|--:|
+| Pi 5 (2GB) + active cooler + case | iRasptek Basic Kit for Raspberry Pi 5 (2GB) | 1 | $110.99 |
+| microSD card | SanDisk Extreme PRO 32GB (A1 / U3 / V30) | 1 | $31.99 |
+| Round touchscreen | Waveshare 3.4″ HDMI Round, 800×800 IPS, 10-pt touch | 1 | $105.99 |
+| Enclosure | 3D-printed Pi case + display back (own filament) | 1 | DIY |
+
+### CarPlay
+
+| Part | What I used | Qty | Price |
+|---|---|--:|--:|
+| Wireless CarPlay adapter | Carlinkit **CPC200-CCPA** | 1 | $55.99 |
+
+### Sensors
+
+| Part | What I used | Qty | Price |
+|---|---|--:|--:|
+| GPS receiver | Adafruit Ultimate GPS GNSS w/ USB (99-ch, 10 Hz) | 1 | $29.95 |
+| GPS antenna | Adafruit External Active Antenna, 28 dB, 5 m, SMA | 1 | $21.50 |
+| Antenna pigtail | u.FL → SMA RG178 jumper (5-pack) | 1 | $6.99 |
+| IMU — lean / pitch / G | Adafruit **BNO055** 9-DOF (UART mode) | 1 | $39.10 |
+| Ambient temp | BOJACK **DS18B20** waterproof probe kit (incl. pull-up) | 1 | $8.99 |
+| CHT amplifier | **MAX31855** K-type thermocouple board | 2 | $11.92 |
+| CHT thermocouple | K-type probe w/ **14 mm** spark-plug washer, 3 m lead | 2 | $15.99 |
+
+### Real-time clock
+
+| Part | What I used | Qty | Price |
+|---|---|--:|--:|
+| RTC battery | ML2032 rechargeable Li coin cell | 1 | $8.99 |
+| RTC holder | RTC battery box for Pi 5 (cell not included) | 1 | $5.49 |
+
+### Cabling & adapters
+
+| Part | What I used | Qty | Price |
+|---|---|--:|--:|
+| Jumper wires | 120-pc Dupont kit (M-F / M-M / F-F) | 1 | $8.99 |
+| HDMI cable | Cable Matters ultra-thin HDMI, 6 ft (2-pack, used 1) | 1 | $15.99 |
+| HDMI right-angle | 180° HDMI M-F U-shaped adapter (2-pack, used 1) | 1 | $10.99 |
+| Micro-HDMI adapter | Micro-HDMI M → HDMI F 180° angled (2-pack, used 1) | 1 | $9.99 |
+| USB-C → USB-A cable | Amazon Basics, 6 ft | 1 | $2.82 |
+
+**Parts subtotal: ≈ $502** (+ $13.84 Adafruit shipping & tax on the GPS order).
+Excludes the 3D-printed enclosure (own filament) and the iPhone you already own.
+
+> The two ×2 lines (MAX31855, CHT probes) show the price I recorded for that
+> line. If either was a per-unit price rather than the pair, the total rises by
+> that amount — easy to adjust.
+
+> **Why these specific parts:**
+> - The R75/6 takes **14 mm** spark plugs, so the thermocouple washers are 14 mm.
+> - The **BNO055 runs over UART, not I2C** — the Pi 5's RP1 I2C controller can't
+>   tolerate the BNO055's clock-stretching. (Details in `sensors/imu.py`.)
+> - The Waveshare panel is **HDMI**, so the Pi 5's micro-HDMI is adapted/cabled
+>   to it — hence the little stack of HDMI adapters above.
 
 ---
 
-### Linux (x86_64)
+## Instrument wiring & Pi setup
 
-This AppImage has been tested on Debian Trixie (13). No additional software is required — just download the x86_64.AppImage and make it executable.
+Full reproduce-from-a-fresh-flash instructions — `config.txt` overlays, sensor
+wiring pinouts, udev rules, the systemd user services, and the gotchas learned
+the hard way — live in **[`PI_SETUP.md`](PI_SETUP.md)**.
 
-```bash
-chmod +x round-carplay-*-x86_64.AppImage
-```
+Sensor scripts (`sensors/*.py`) each document their exact wiring in the file
+header. Quick map:
 
----
-
-### Mac (arm64)
-
-This step is required for all non-Apple-signed apps.
-
-```bash
-xattr -cr /Applications/round-carplay.app
-```
-
-For microphone support, please install Sound eXchange (SoX) via brew.
-```bash
-brew install sox
-```
-
----
-
-## Settings Reference
-
-Access settings via the tuning icon in the nav bar. Changes to video/stream settings require hitting **Save** which resets the dongle; most other changes apply immediately.
-
-### Video & Stream
-
-| Setting | Default | What it does |
+| Sensor | Script | Bus |
 |---|---|---|
-| **WIDTH / HEIGHT** | 800 × 480 | Resolution sent to the phone — CarPlay renders its UI at this exact size and streams it back. Should match your display resolution. |
-| **FPS** | 60 | Frames per second requested from the phone. 30 is fine for navigation, 60 is better for video. |
-| **DPI** | 140 | Dots-per-inch hint sent to the phone. Affects how CarPlay scales its UI. Higher = smaller, denser elements. |
-| **FORMAT** | 5 | Video codec format. 5 = H.264. Don't change this unless you know your adapter supports something else. |
-| **IBOX VERSION** | 2 | Protocol version for the Carlinkit hardware. 2 works for CPC200-CCPA and CPC200-CCPW. |
-| **MEDIA DELAY** | 500ms | Delay before audio starts. Helps sync audio with the video stream. If audio leads or lags video, adjust this. |
-| **PHONE WORK MODE** | 2 | How the phone connects. 2 = wireless CarPlay. |
-
-### Audio
-
-| Setting | What it does |
-|---|---|
-| **AUDIO VOLUME** | Volume for CarPlay media (music, podcasts). 0–100% slider. |
-| **NAV VOLUME** | Separate volume for turn-by-turn navigation voice. Lets you keep nav loud while music stays quieter. |
-| **DISABLE AUDIO** | Transfers audio processing back to the phone instead of handling it on the Pi. Useful for troubleshooting audio issues. |
-| **MICROPHONE: OS** | Uses a microphone connected to the Pi via the OS (USB mic, etc.) — the detected device name shows next to it. |
-| **MICROPHONE: BOX** | Uses the microphone built into the Carlinkit dongle. |
-
-### Connectivity
-
-| Setting | What it does |
-|---|---|
-| **WIFI TYPE** | Which band the dongle broadcasts for wireless CarPlay. 5GHz has lower latency and less interference — use it unless your phone struggles to connect. |
-
-### Display & UI
-
-| Setting | What it does |
-|---|---|
-| **DARK MODE** | Tells CarPlay to use its night/dark theme. Applies immediately. |
-| **KIOSK** | Hides the navigation tabs (settings, camera, etc.) for a pure CarPlay experience. Good once everything is dialled in. |
-
-### Key Bindings
-
-Physical button mappings. If you wire buttons to the Pi GPIO you can bind them to CarPlay controls: select, directional input, home, back, play/pause, next/previous track.
+| BNO055 IMU (lean/pitch/G) | `imu.py` | UART `/dev/ttyAMA0` |
+| CHT left/right (MAX31855 ×2) | `cht_temp.py` | SPI0 (CE0 = left, CE1 = right) |
+| Ambient (DS18B20) | `ambient_temp.py` | 1-Wire (GPIO4) |
+| GPS (Adafruit Ultimate, USB) | `gps.py` | USB serial `/dev/gps` |
+| Pi CPU temp | `pi_temp.py` | `/sys/class/thermal` (no wiring) |
 
 ---
 
-## Links
+## Build & deploy the app
 
-* **Repository & Issue Tracker:** [OneMakerShow/round-carplay](https://github.com/OneMakerShow/round-carplay)
-* **Inspired by:** [pi-carplay](https://github.com/f-io/pi-carplay)
+### Prerequisites (build host)
+
+- **Node** (project uses electron-vite) and **Python 3.x** (for native module builds)
+- **build-essential**, **libusb-1.0-0-dev**, **libudev-dev** (Linux)
+- **fuse** (to run the AppImage)
+
+### Build the arm64 AppImage
+
+```bash
+npm run install:clean
+npm run build:armLinux      # → dist/round-carplay-0.1.0-arm64.AppImage
+```
+
+> ⚠️ electron-builder rewrites the root `package.json` during packaging. **Always
+> restore it afterward** or the next build can ship a broken app:
+> ```bash
+> git checkout -- package.json
+> ```
+> (See [`CLAUDE.md`](CLAUDE.md) for the full footgun writeup.)
+
+### Deploy to the Pi
+
+```bash
+rsync -az --progress "dist/round-carplay-0.1.0-arm64.AppImage" \
+  byron@motocarplay.local:/home/byron/round-carplay/round-carplay.AppImage
+ssh byron@motocarplay.local "sudo reboot"
+```
+
+The Pi autostarts the AppImage on boot; the sensor scripts run as systemd user
+services. The app and the Python sensors talk over a local Socket.IO channel.
+
+---
+
+## Settings reference
+
+Open Settings via the tuning icon. Video/stream changes need **Save** (which
+resets the dongle); most other toggles apply immediately.
+
+<p align="center">
+  <img src="documentation/images/settings.png" alt="Settings" width="40%" />
+  &emsp;
+  <img src="documentation/images/info.png" alt="Info / dongle status" width="40%" />
+</p>
+
+### Video & stream
+
+| Setting | Typical | What it does |
+|---|---|---|
+| **WIDTH / HEIGHT** | 565 × 565 | Resolution sent to the phone — CarPlay renders its UI at this size. Matches the centered square. |
+| **FPS** | 60 | Frames per second requested from the phone. |
+| **DPI** | 140 | UI scaling hint to the phone. Higher = denser. |
+| **FORMAT** | 5 | Video codec (5 = H.264). |
+| **IBOX VERSION** | 2 | Carlinkit protocol version (works for CPC200-CCPA). |
+| **MEDIA DELAY** | 500 ms | Audio start delay, for A/V sync. |
+| **PHONE WORK MODE** | 2 | Connection mode (2 = wireless CarPlay). |
+
+### Toggles & audio
+
+| Control | What it does |
+|---|---|
+| **KIOSK** | Hides the nav tabs for a pure-dashboard look. |
+| **DARK MODE** | Tells CarPlay to use its night theme. |
+| **NO AUDIO** | Hands audio processing back to the phone (troubleshooting). |
+| **BACKDROP** | Enables/disables the ambient blurred backdrop. |
+| **SAMPLE DATA** | Feeds synthetic sensor values for UI testing on the bench. |
+| **AUDIO / NAV VOL** | Separate volume for media vs. turn-by-turn voice. |
+| **MICROPHONE** | Source for Siri/voice: OS (USB mic) or BOX (dongle mic). |
+| **WIFI TYPE** | 2.4 / 5 GHz band the dongle broadcasts for wireless CarPlay. |
+| **TILT CALIBRATION** | Zero the lean/pitch readout — sit the bike level, **SET LEVEL**. |
+| **BINDINGS** | Map GPIO buttons to CarPlay controls (select, d-pad, home, etc.). |
+
+---
 
 ## Disclaimer
 
-** _Apple and CarPlay are trademarks of Apple Inc. This project is not affiliated with or endorsed by Apple in any way. All trademarks are the property of their respective owners._
+_Apple and CarPlay are trademarks of Apple Inc. This project is not affiliated
+with or endorsed by Apple. All trademarks are the property of their respective
+owners. Mounting a screen on a motorcycle and reading it while riding is done at
+your own risk — keep your eyes on the road._
 
+## Credits
+
+- Base CarPlay engine: [OneMakerShow/round-carplay](https://github.com/OneMakerShow/round-carplay)
+- Original project: [pi-carplay](https://github.com/f-io/pi-carplay)
 
 ## License
 
-This project is licensed under the MIT License.
+MIT — see [`LICENSE`](LICENSE).

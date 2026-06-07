@@ -1,4 +1,4 @@
-# Raspberry Pi Setup (round-carplay)
+# Raspberry Pi Setup (motoCarPlay)
 
 Everything needed to reproduce the Pi from a fresh SD-card flash. These are the
 **non-default** changes layered on top of a stock Raspberry Pi OS install.

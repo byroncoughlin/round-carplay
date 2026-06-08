@@ -178,8 +178,8 @@ export default function GpsSkyPanel() {
   // Bigger, bolder, brighter than before — these are the at-a-glance readouts.
   const stat = (label: string, value: string, color = 'white') => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-      <span style={{ color: '#b3b3b3', fontSize: 13, fontWeight: 800, letterSpacing: 0.5 }}>{label}</span>
-      <span style={{ color, fontSize: 16, fontWeight: 900, fontFamily: 'monospace' }}>{value}</span>
+      <span style={{ color: '#dcdcdc', fontSize: 14, fontWeight: 800, letterSpacing: 0.5 }}>{label}</span>
+      <span style={{ color, fontSize: 17, fontWeight: 900, fontFamily: 'monospace' }}>{value}</span>
     </div>
   )
 

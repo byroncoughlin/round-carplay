@@ -137,11 +137,11 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
 
   // Chart SVG coordinate space — wider/shorter aspect when compact (stacked).
   const SVG_W = 565
-  const CX    = 46                 // left margin for y-axis labels
-  const CW    = SVG_W - CX - 10     // 509
+  const CX    = 58                 // left margin for y-axis labels (wide for big white ticks)
+  const CW    = SVG_W - CX - 10     // 497
   const CY    = 8
   const CH    = compact ? 168 : 358
-  const SVG_H = CY + CH + (compact ? 30 : 62)
+  const SVG_H = CY + CH + (compact ? 38 : 64)
 
   const windowEnd   = nowMs - viewOffset
   const windowStart = windowEnd - WINDOW_MS
@@ -222,12 +222,12 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{
-            fontSize: 13, fontWeight: 800, letterSpacing: 3,
+            fontSize: 16, fontWeight: 800, letterSpacing: 3,
             color: cfg.color, fontFamily: 'monospace',
           }}>{cfg.label}</span>
           {isLive
-            ? <span style={{ fontSize: 13, color: '#4fc3f7', fontWeight: 800, letterSpacing: 2, fontFamily: 'monospace' }}>● LIVE</span>
-            : <span style={{ fontSize: 13, color: '#bbb', fontWeight: 700, letterSpacing: 1, fontFamily: 'monospace' }}>{Math.round(viewOffset / 60000)}m ago</span>
+            ? <span style={{ fontSize: 15, color: '#5fd0ff', fontWeight: 800, letterSpacing: 2, fontFamily: 'monospace' }}>● LIVE</span>
+            : <span style={{ fontSize: 15, color: '#fff', fontWeight: 700, letterSpacing: 1, fontFamily: 'monospace' }}>{Math.round(viewOffset / 60000)}m ago</span>
           }
         </div>
 
@@ -261,15 +261,15 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
           }}>
             {current !== null ? cfg.fmtVal(current) : '--'}
           </span>
-          <span style={{ fontSize: compact ? 17 : 22, fontWeight: 700, color: '#9a9a9a', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: compact ? 20 : 26, fontWeight: 700, color: '#e8e8e8', fontFamily: 'monospace' }}>
             {cfg.unit}
           </span>
         </div>
 
-        <div style={{ fontSize: 14, color: '#ddd', fontWeight: 700, fontFamily: 'monospace', textAlign: 'right', lineHeight: 1.55 }}>
-          {visMax !== null && <div><span style={{ color: '#b3b3b3', fontWeight: 800 }}>MAX </span>{cfg.fmtVal(visMax)}</div>}
-          {visMin !== null && <div><span style={{ color: '#b3b3b3', fontWeight: 800 }}>MIN </span>{cfg.fmtVal(visMin)}</div>}
-          {!compact && <div style={{ fontSize: 11, color: '#888', fontWeight: 600, marginTop: 3 }}>{data.length} pts · drag ← →</div>}
+        <div style={{ fontSize: compact ? 17 : 20, color: '#fff', fontWeight: 800, fontFamily: 'monospace', textAlign: 'right', lineHeight: 1.5 }}>
+          {visMax !== null && <div><span style={{ color: '#fff', fontWeight: 800 }}>MAX </span>{cfg.fmtVal(visMax)}</div>}
+          {visMin !== null && <div><span style={{ color: '#fff', fontWeight: 800 }}>MIN </span>{cfg.fmtVal(visMin)}</div>}
+          {!compact && <div style={{ fontSize: 14, color: '#e0e0e0', fontWeight: 700, marginTop: 4 }}>{data.length} pts · drag ← →</div>}
         </div>
       </div>
 
@@ -304,9 +304,9 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
           const y = yFor(v)
           return (
             <g key={i}>
-              <line x1={CX} y1={y} x2={CX + CW} y2={y} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
-              <text x={CX - 4} y={y + 4} textAnchor="end"
-                fill="rgba(255,255,255,0.55)" fontSize={11} fontWeight={600} fontFamily="monospace">
+              <line x1={CX} y1={y} x2={CX + CW} y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+              <text x={CX - 5} y={y + 5} textAnchor="end"
+                fill="rgba(255,255,255,0.92)" fontSize={15} fontWeight={700} fontFamily="monospace">
                 {cfg.fmtVal(v)}
               </text>
             </g>
@@ -315,9 +315,9 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
 
         {xLabels.map(({ x, label }) => (
           <g key={label}>
-            <line x1={x} y1={CY} x2={x} y2={CY + CH} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
-            <text x={x} y={CY + CH + 15} textAnchor="middle"
-              fill="rgba(255,255,255,0.55)" fontSize={11} fontWeight={600} fontFamily="monospace">
+            <line x1={x} y1={CY} x2={x} y2={CY + CH} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+            <text x={x} y={CY + CH + 18} textAnchor="middle"
+              fill="rgba(255,255,255,0.92)" fontSize={15} fontWeight={700} fontFamily="monospace">
               {label}
             </text>
           </g>
@@ -354,8 +354,8 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
             <g key={`thr-${i}`}>
               <line x1={CX} y1={y} x2={CX + CW} y2={y}
                 stroke={z.color} strokeWidth={1} strokeDasharray="4 4" opacity={0.55} />
-              <text x={CX + CW - 4} y={y - 4} textAnchor="end"
-                fill={z.color} fontSize={11} fontWeight={700} fontFamily="monospace" opacity={0.95}>
+              <text x={CX + CW - 4} y={y - 5} textAnchor="end"
+                fill={z.color} fontSize={14} fontWeight={800} fontFamily="monospace" opacity={1}>
                 {z.label} {cfg.fmtVal(thr)}°
               </text>
             </g>
@@ -369,8 +369,8 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
         )}
 
         {visible.length < 2 && (
-          <text x={CX + CW / 2} y={CY + CH / 2 + 5} textAnchor="middle"
-            fill="rgba(255,255,255,0.4)" fontSize={15} fontWeight={600} letterSpacing={2} fontFamily="monospace">
+          <text x={CX + CW / 2} y={CY + CH / 2 + 6} textAnchor="middle"
+            fill="rgba(255,255,255,0.6)" fontSize={19} fontWeight={700} letterSpacing={2} fontFamily="monospace">
             NO DATA IN WINDOW
           </text>
         )}
@@ -386,8 +386,8 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
           const barX   = CX + CW - (viewOffset / Math.max(1, maxOff)) * (CW - barW) - barW
           return (
             <>
-              <rect x={CX} y={CY + CH + 22} width={CW} height={4} fill="rgba(255,255,255,0.05)" rx={2} />
-              <rect x={barX} y={CY + CH + 22} width={barW} height={4} fill={cfg.color} rx={2} opacity={0.45} />
+              <rect x={CX} y={CY + CH + 30} width={CW} height={4} fill="rgba(255,255,255,0.05)" rx={2} />
+              <rect x={barX} y={CY + CH + 30} width={barW} height={4} fill={cfg.color} rx={2} opacity={0.45} />
             </>
           )
         })()}

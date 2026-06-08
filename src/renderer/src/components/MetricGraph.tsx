@@ -266,7 +266,10 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
           </span>
         </div>
 
-        <div style={{ fontSize: compact ? 17 : 20, color: '#fff', fontWeight: 800, fontFamily: 'monospace', textAlign: 'right', lineHeight: 1.5 }}>
+        {/* MAX/MIN: a constant-importance readout — intentionally NOT tied to
+            `compact`, so it reads the same size on single (CHT) and stacked
+            (ambient+Pi) views. Only the space-driven value/unit/chart scale. */}
+        <div style={{ fontSize: 20, color: '#fff', fontWeight: 800, fontFamily: 'monospace', textAlign: 'right', lineHeight: 1.35 }}>
           {visMax !== null && <div><span style={{ color: '#fff', fontWeight: 800 }}>MAX </span>{cfg.fmtVal(visMax)}</div>}
           {visMin !== null && <div><span style={{ color: '#fff', fontWeight: 800 }}>MIN </span>{cfg.fmtVal(visMin)}</div>}
           {!compact && <div style={{ fontSize: 14, color: '#e0e0e0', fontWeight: 700, marginTop: 4 }}>{data.length} pts · drag ← →</div>}

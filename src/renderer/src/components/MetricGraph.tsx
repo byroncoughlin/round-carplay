@@ -222,12 +222,12 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{
-            fontSize: 12, fontWeight: 800, letterSpacing: 3,
+            fontSize: 13, fontWeight: 800, letterSpacing: 3,
             color: cfg.color, fontFamily: 'monospace',
           }}>{cfg.label}</span>
           {isLive
-            ? <span style={{ fontSize: 11, color: '#4fc3f7', fontWeight: 700, letterSpacing: 2, fontFamily: 'monospace' }}>● LIVE</span>
-            : <span style={{ fontSize: 11, color: '#888', fontFamily: 'monospace' }}>{Math.round(viewOffset / 60000)}m ago</span>
+            ? <span style={{ fontSize: 13, color: '#4fc3f7', fontWeight: 800, letterSpacing: 2, fontFamily: 'monospace' }}>● LIVE</span>
+            : <span style={{ fontSize: 13, color: '#bbb', fontWeight: 700, letterSpacing: 1, fontFamily: 'monospace' }}>{Math.round(viewOffset / 60000)}m ago</span>
           }
         </div>
 
@@ -261,15 +261,15 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
           }}>
             {current !== null ? cfg.fmtVal(current) : '--'}
           </span>
-          <span style={{ fontSize: compact ? 16 : 20, fontWeight: 600, color: '#555', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: compact ? 17 : 22, fontWeight: 700, color: '#9a9a9a', fontFamily: 'monospace' }}>
             {cfg.unit}
           </span>
         </div>
 
-        <div style={{ fontSize: 12, color: '#666', fontFamily: 'monospace', textAlign: 'right', lineHeight: 1.6 }}>
-          {visMax !== null && <div><span style={{ color: '#888' }}>MAX </span>{cfg.fmtVal(visMax)}</div>}
-          {visMin !== null && <div><span style={{ color: '#888' }}>MIN </span>{cfg.fmtVal(visMin)}</div>}
-          {!compact && <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>{data.length} pts · drag ← →</div>}
+        <div style={{ fontSize: 14, color: '#ddd', fontWeight: 700, fontFamily: 'monospace', textAlign: 'right', lineHeight: 1.55 }}>
+          {visMax !== null && <div><span style={{ color: '#b3b3b3', fontWeight: 800 }}>MAX </span>{cfg.fmtVal(visMax)}</div>}
+          {visMin !== null && <div><span style={{ color: '#b3b3b3', fontWeight: 800 }}>MIN </span>{cfg.fmtVal(visMin)}</div>}
+          {!compact && <div style={{ fontSize: 11, color: '#888', fontWeight: 600, marginTop: 3 }}>{data.length} pts · drag ← →</div>}
         </div>
       </div>
 
@@ -304,9 +304,9 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
           const y = yFor(v)
           return (
             <g key={i}>
-              <line x1={CX} y1={y} x2={CX + CW} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+              <line x1={CX} y1={y} x2={CX + CW} y2={y} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
               <text x={CX - 4} y={y + 4} textAnchor="end"
-                fill="rgba(255,255,255,0.3)" fontSize={9} fontFamily="monospace">
+                fill="rgba(255,255,255,0.55)" fontSize={11} fontWeight={600} fontFamily="monospace">
                 {cfg.fmtVal(v)}
               </text>
             </g>
@@ -315,9 +315,9 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
 
         {xLabels.map(({ x, label }) => (
           <g key={label}>
-            <line x1={x} y1={CY} x2={x} y2={CY + CH} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
-            <text x={x} y={CY + CH + 14} textAnchor="middle"
-              fill="rgba(255,255,255,0.3)" fontSize={9} fontFamily="monospace">
+            <line x1={x} y1={CY} x2={x} y2={CY + CH} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+            <text x={x} y={CY + CH + 15} textAnchor="middle"
+              fill="rgba(255,255,255,0.55)" fontSize={11} fontWeight={600} fontFamily="monospace">
               {label}
             </text>
           </g>
@@ -355,7 +355,7 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
               <line x1={CX} y1={y} x2={CX + CW} y2={y}
                 stroke={z.color} strokeWidth={1} strokeDasharray="4 4" opacity={0.55} />
               <text x={CX + CW - 4} y={y - 4} textAnchor="end"
-                fill={z.color} fontSize={9} fontFamily="monospace" opacity={0.85}>
+                fill={z.color} fontSize={11} fontWeight={700} fontFamily="monospace" opacity={0.95}>
                 {z.label} {cfg.fmtVal(thr)}°
               </text>
             </g>
@@ -370,7 +370,7 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
 
         {visible.length < 2 && (
           <text x={CX + CW / 2} y={CY + CH / 2 + 5} textAnchor="middle"
-            fill="rgba(255,255,255,0.15)" fontSize={13} fontFamily="monospace">
+            fill="rgba(255,255,255,0.4)" fontSize={15} fontWeight={600} letterSpacing={2} fontFamily="monospace">
             NO DATA IN WINDOW
           </text>
         )}

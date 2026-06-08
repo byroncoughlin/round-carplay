@@ -98,14 +98,14 @@ function SkyPlot({ sats, acquiring }: { sats: GpsSat[]; acquiring: boolean }) {
               stroke={s.used ? 'rgba(255,255,255,0.85)' : c}
               strokeWidth={s.used ? 1 : 1.5} />
             <text x={x} y={y + 15} textAnchor="middle"
-              fill="rgba(255,255,255,0.5)" fontSize={7.5} fontFamily="monospace">{s.prn}</text>
+              fill="rgba(255,255,255,0.65)" fontSize={8} fontWeight={600} fontFamily="monospace">{s.prn}</text>
           </g>
         )
       })}
 
       {plotted.length === 0 && (
         <text x={CX} y={CY + 4} textAnchor="middle"
-          fill="rgba(255,255,255,0.3)" fontSize={11} fontFamily="monospace">SEARCHING…</text>
+          fill="rgba(255,255,255,0.5)" fontSize={12} fontWeight={600} letterSpacing={1} fontFamily="monospace">SEARCHING…</text>
       )}
     </svg>
   )
@@ -127,8 +127,8 @@ function SignalBars({ sats }: { sats: GpsSat[] }) {
         <g key={db}>
           <line x1={0} y1={yFor(db)} x2={W} y2={yFor(db)}
             stroke="rgba(255,255,255,0.10)" strokeWidth={0.75} strokeDasharray="3 3" />
-          <text x={1} y={yFor(db) - 1.5} fill="rgba(255,255,255,0.32)"
-            fontSize={6.5} fontFamily="monospace">{db}</text>
+          <text x={1} y={yFor(db) - 1.5} fill="rgba(255,255,255,0.5)"
+            fontSize={8} fontWeight={600} fontFamily="monospace">{db}</text>
         </g>
       ))}
       {ordered.map((s, i) => {
@@ -141,7 +141,7 @@ function SignalBars({ sats }: { sats: GpsSat[] }) {
             <rect x={x} y={H - h} width={bw} height={h} rx={2}
               fill={c} opacity={s.used ? 1 : 0.4} />
             <text x={x + bw / 2} y={H + 11} textAnchor="middle"
-              fill="rgba(255,255,255,0.5)" fontSize={8} fontFamily="monospace">{s.prn}</text>
+              fill="rgba(255,255,255,0.65)" fontSize={9} fontWeight={600} fontFamily="monospace">{s.prn}</text>
           </g>
         )
       })}
@@ -222,7 +222,7 @@ export default function GpsSkyPanel() {
 
         {/* signal bars */}
         <div style={{ marginTop: 'auto' }}>
-          <div style={{ color: '#888', fontSize: 10, fontWeight: 700, letterSpacing: 2, fontFamily: 'monospace', marginBottom: 2 }}>
+          <div style={{ color: '#aaa', fontSize: 11, fontWeight: 800, letterSpacing: 2, fontFamily: 'monospace', marginBottom: 2 }}>
             SIGNAL (dB-Hz)
           </div>
           <SignalBars sats={sky.sats} />

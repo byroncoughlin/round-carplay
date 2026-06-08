@@ -236,8 +236,19 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
     <div style={{
       flex: 1, minHeight: 0,
       display: 'flex', flexDirection: 'column',
-      borderTop: first ? 'none' : '1px solid rgba(255,255,255,0.1)',
     }}>
+      {/* ── Section divider — an inset white rule (fades out at both ends) that
+            visibly separates the live panel above from this graph below. ── */}
+      {!first && (
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', paddingTop: 3 }}>
+          <div style={{
+            width: '58%', height: 2, borderRadius: 2,
+            background: 'linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0) 100%)',
+            boxShadow: '0 0 6px rgba(255,255,255,0.25)',
+          }} />
+        </div>
+      )}
+
       {/* ── TOP ROW: label / live status + reset ── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',

@@ -1,4 +1,5 @@
 <p align="center">
+  <a href="https://byronthegreat.com/projects/motocarplay/"><img alt="Live Demo" src="https://img.shields.io/badge/live%20demo-byronthegreat.com-2ea44f"></a>
   <img alt="Platform" src="https://img.shields.io/badge/platform-Raspberry%20Pi%205-c51a4a">
   <img alt="OS" src="https://img.shields.io/badge/OS-Raspberry%20Pi%20OS%20(Trixie)-a80030">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
@@ -7,6 +8,9 @@
 # motoCarPlay
 
 **A round-display Apple CarPlay dashboard with live motorcycle instrumentation, built for a 1976 BMW R75/6.**
+
+**▶ Try the live browser demo → [byronthegreat.com/projects/motocarplay](https://byronthegreat.com/projects/motocarplay/)**
+_(the dashboard UI running in your browser, driven by a simulated ride — the center CarPlay screen is a static screenshot)_
 
 CarPlay runs in a centered square on an 800×800 round screen; the curved space
 around it is filled with sensor data read straight off the bike — cylinder-head

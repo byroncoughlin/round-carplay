@@ -67,15 +67,15 @@ export default function SpeedDisplay() {
         </div>
       )}
 
-      {/* ── HEADING band — full left third ── */}
+      {/* ── HEADING band — left third, nudged 10px toward center ── */}
       <div
-        style={{ ...bandBase, left: 0, width: '30%', paddingBottom: 1 }}
+        style={{ ...bandBase, left: 10, width: '30%', paddingBottom: 1 }}
         onClick={() => tap('heading')}
       >
-        <span style={{ fontSize: 32, fontWeight: 700, color: cardinal ? 'white' : '#333', lineHeight: 1 }}>
+        <span style={{ fontSize: 32, fontWeight: 700, color: 'white', lineHeight: 1 }}>
           {cardinal ?? '--'}
         </span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#888', marginTop: 2 }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: 'white', marginTop: 2 }}>
           {cardinal !== null ? `${Math.round(heading!)}°` : ''}
         </span>
       </div>
@@ -87,25 +87,25 @@ export default function SpeedDisplay() {
       >
         <span style={{
           fontSize: 90, fontWeight: 800,
-          color: speed !== null ? 'white' : '#333',
+          color: 'white',
           lineHeight: 1, letterSpacing: -2, marginBottom: -9,
         }}>
           {speed !== null ? speed : '--'}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#888', letterSpacing: 3, textTransform: 'uppercase' }}>
+        <span style={{ fontSize: 13, fontWeight: 800, color: 'white', letterSpacing: 3, textTransform: 'uppercase' }}>
           mph
         </span>
       </div>
 
-      {/* ── AMBIENT TEMP band — full right third ── */}
+      {/* ── AMBIENT TEMP band — right third, nudged 10px toward center ── */}
       <div
-        style={{ ...bandBase, right: 0, width: '30%', paddingBottom: 1 }}
+        style={{ ...bandBase, right: 10, width: '30%', paddingBottom: 1 }}
         onClick={() => tap('ambientTemp')}
       >
-        <span style={{ fontSize: 32, fontWeight: 700, color: tempF !== null ? 'white' : '#333', lineHeight: 1 }}>
+        <span style={{ fontSize: 32, fontWeight: 700, color: 'white', lineHeight: 1 }}>
           {tempF !== null ? `${tempF}°` : '--'}
         </span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#888', marginTop: 2 }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: 'white', marginTop: 2 }}>
           {tempF !== null ? 'F' : ''}
         </span>
       </div>

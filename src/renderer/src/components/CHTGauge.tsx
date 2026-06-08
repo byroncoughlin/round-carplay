@@ -6,14 +6,19 @@ interface CHTGaugeProps {
 }
 
 const MAX_TEMP = 300
-const BAR_W   = 70
+const BAR_W   = 68    // Tuned so the bar's OUTER rounded corner (rx=6) clears the
+                      // round-display edge by ~8px — matching the ~8px gap from
+                      // the inner edge to the CarPlay square (symmetric breathing
+                      // room). The circle curves in at the corners, so the bar
+                      // can't be as wide as the flat center would allow without
+                      // the corner clipping (BAR_W=78 clipped; 66 over-gapped).
+                      // (barX anchors the inner edge; BAR_W grows/shrinks outward.)
 const VW      = 110
 // Long bar that fills the tall arc, with the temp number below it. BAR_Y (space
 // above) is matched to the space below the bar (number region) so the bar's
 // midpoint sits at the arc's vertical center — i.e. the gauge reads centered.
-const BAR_H   = 300   // was 240 — longer, extends toward the bottom (but kept
-                      // within the round display's clip at the left/right edge)
-const BAR_Y   = 115   // top padding == bottom (number) padding -> bar centered
+const BAR_H   = 290   // was 300 — ~5px shorter top + ~5px shorter bottom
+const BAR_Y   = 120   // was 115 — bumped 5 to keep the (now shorter) bar centered
 const VH      = 530   // 2*BAR_Y + BAR_H; fits the number below, no circle clip
 
 function tempColor(temp: number): string {
@@ -77,7 +82,7 @@ export default function CHTGauge({ side }: CHTGaugeProps) {
         <text
           x={textCX} y={BAR_Y + BAR_H + 34}
           textAnchor="middle"
-          fill={hasData ? color : '#333'}
+          fill={hasData ? color : 'white'}
           fontSize={28} fontWeight="bold" fontFamily="sans-serif"
         >
           {hasData ? Math.round(clamped) : '--'}
@@ -85,8 +90,8 @@ export default function CHTGauge({ side }: CHTGaugeProps) {
 
         {/* Unit */}
         <text x={textCX} y={BAR_Y + BAR_H + 52}
-          textAnchor="middle" fill="#444" fontSize={12} fontFamily="sans-serif">
-          °C
+          textAnchor="middle" fill="white" fontSize={12} fontWeight="bold" fontFamily="sans-serif">
+          C
         </text>
       </svg>
     </div>

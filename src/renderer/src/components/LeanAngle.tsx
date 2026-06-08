@@ -125,7 +125,7 @@ export default function LeanAngle() {
           <rect x={CX - 30} y={REF_Y - 13} width={60} height={26}
             fill="rgba(0,0,0,0.88)" rx={8} />
           <text x={CX} y={REF_Y + 7} textAnchor="middle"
-            fill={pitch !== null ? REF : '#444'} fontSize={20}
+            fill={pitch !== null ? REF : 'white'} fontSize={20}
             fontWeight="bold" fontFamily="monospace">
             {pitch !== null ? (absPitch === 0 ? '—' : `${pitchDir}${absPitch}°`) : '--'}
           </text>
@@ -144,7 +144,7 @@ export default function LeanAngle() {
             fill="rgba(255,255,255,0.75)" fontSize={12}
             fontWeight="bold" fontFamily="monospace" letterSpacing={2}>ALT</text>
           <text x={123} y={48} textAnchor="middle"
-            fill={altM !== null ? '#e0e0e0' : '#444'} fontSize={24}
+            fill={altM !== null ? '#e0e0e0' : 'white'} fontSize={24}
             fontWeight="bold" fontFamily="monospace">{altFt}</text>
           <text x={123} y={59} textAnchor="middle"
             fill="rgba(255,255,255,0.7)" fontSize={11}
@@ -158,7 +158,7 @@ export default function LeanAngle() {
             stroke="rgba(255,255,255,0.07)" strokeWidth={0.75}
             rx={14} />
           <text x={282.5} y={112} textAnchor="middle"
-            fill={hasData ? 'white' : '#444'} fontSize={24}
+            fill={hasData ? 'white' : 'white'} fontSize={24}
             fontWeight="bold" fontFamily="sans-serif">
             {hasData ? (absLean > 0 ? `${absLean}° ${side}` : '0°') : '--'}
           </text>
@@ -172,7 +172,7 @@ export default function LeanAngle() {
             fontWeight="bold" fontFamily="monospace" letterSpacing={2}>G</text>
           <rect x={415} y={14} width={60} height={34} fill="rgba(0,0,0,0.72)" rx={5} />
           <text x={445} y={40} textAnchor="middle"
-            fill={hasG ? gColor : '#444'} fontSize={30}
+            fill={hasG ? gColor : 'white'} fontSize={30}
             fontWeight="bold" fontFamily="monospace">
             {hasG ? gVal.toFixed(1) : '--'}
           </text>

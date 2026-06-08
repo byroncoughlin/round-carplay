@@ -1,0 +1,54 @@
+/* DEMO-only: the static CarPlay map shown in the center square while idle.
+   Sized to the CarPlay square (70.625% of the round display = the inscribed
+   square) and centered. demo/main.tsx toggles .cp-map--hidden when a metric
+   graph opens so the map never blocks the graph. */
+#cp-map {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 70.625vmin;
+  height: 70.625vmin;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+  border-radius: 4.4vmin; /* matches the 36px card radius at ~800px */
+  z-index: 1000;          /* above idle HomeView (1300 is inside the z5 square ctx) */
+  /* Capture clicks so the static center clearly reads as non-interactive (the
+     CarPlay tiles are a still image); the surrounding gauges stay clickable. */
+  pointer-events: auto;
+  cursor: not-allowed;
+  box-shadow: 0 0 20px 2px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.25s ease;
+}
+#cp-map.cp-map--hidden {
+  opacity: 0;
+  pointer-events: none; /* don't block the graph/close button when open */
+}
+
+/* "Static screenshot" badge pinned near the top of the center square. */
+#cp-badge {
+  position: fixed;
+  top: calc(50% - 30vmin);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px 5px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #eef1f4;
+  font: 600 11px/1 -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.25s ease;
+}
+#cp-badge svg { opacity: 0.85; }
+#cp-badge.cp-map--hidden {
+  opacity: 0;
+}

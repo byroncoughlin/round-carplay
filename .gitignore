@@ -22,3 +22,6 @@ dist
 out
 *.log*
 >>>>>>> origin/v4
+
+# web demo build output
+web-dist

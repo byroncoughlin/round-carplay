@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="initial-scale=1, width=device-width, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <title>motoCarPlay — dashboard</title>
+    <style>
+      html, body, #root {
+        margin: 0;
+        padding: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background-color: #000000;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Static CarPlay map shown in the center square. demo/main.tsx hides it
+         (and the badge) while a metric graph is open. The center is a still
+         image — its CarPlay buttons/tiles aren't interactive. -->
+    <img id="cp-map" src="./carplay-map.png?v=2" alt="CarPlay navigation (static screenshot)" />
+    <div id="cp-badge">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z"/>
+      </svg>
+      Static screenshot — buttons aren't live
+    </div>
+    <script type="module" src="./src/demo/main.tsx"></script>
+  </body>
+</html>

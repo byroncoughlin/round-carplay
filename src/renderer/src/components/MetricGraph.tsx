@@ -1,6 +1,9 @@
 import { useRef, useState, useEffect } from 'react'
 import { useDataLog, METRIC_CONFIG, MetricKey } from '../store/dataLog'
+import { useCarplayStore } from '../store/store'
 import GpsSkyPanel from './GpsSkyPanel'
+import RideDynamicsPanel from './RideDynamicsPanel'
+import CylinderHeadsPanel from './CylinderHeadsPanel'
 
 const WINDOW_MS  = 5 * 60 * 1000
 const MAX_AGE_MS = 8 * 60 * 60 * 1000
@@ -12,10 +15,22 @@ const SPLIT: Partial<Record<MetricKey, MetricKey[]>> = {
   ambientTemp: ['ambientTemp', 'piTemp'],
 }
 
-// GPS-derived metrics open a split too, but the TOP half is the live GPS Sky
-// View (satellite plot + signal + fix quality) instead of a second chart — so
-// tapping speed/heading/altitude doubles as GPS status & troubleshooting.
+// Some metrics open a "live instrument on top, history graph below" split,
+// where the top half is a purpose-built panel instead of a second chart:
+//   • GPS metrics  → satellite sky view (plot + signal + fix quality)
+//   • tilt/accel   → ride dynamics (attitude horizon + G traction circle)
+//   • cylinder temp→ twin-cylinder heat panel (both heads + ΔT)
+// So tapping any member opens that panel above its own time-series graph.
 const GPS_KEYS: MetricKey[] = ['speed', 'heading', 'altitude']
+const IMU_KEYS: MetricKey[] = ['leanAngle', 'pitchAngle', 'gForce']
+const CHT_KEYS: MetricKey[] = ['chtLeft', 'chtRight']
+
+function panelFor(key: MetricKey): React.FC | null {
+  if (GPS_KEYS.includes(key)) return GpsSkyPanel
+  if (IMU_KEYS.includes(key)) return RideDynamicsPanel
+  if (CHT_KEYS.includes(key)) return CylinderHeadsPanel
+  return null
+}
 
 interface Props {
   metricKey: MetricKey
@@ -23,9 +38,9 @@ interface Props {
 }
 
 export default function MetricGraph({ metricKey, onClose }: Props) {
-  const isGps   = GPS_KEYS.includes(metricKey)
-  const keys    = SPLIT[metricKey] ?? [metricKey]
-  const compact = isGps || keys.length > 1
+  const TopPanel = panelFor(metricKey)
+  const keys     = SPLIT[metricKey] ?? [metricKey]
+  const compact  = TopPanel !== null || keys.length > 1
 
   const [nowMs,       setNowMs]       = useState(() => Date.now())
   const [confirmQuit, setConfirmQuit] = useState(false)
@@ -73,9 +88,9 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
         title="tap to close · hold to quit app"
       >✕</button>
 
-      {isGps ? (
+      {TopPanel ? (
         <>
-          <GpsSkyPanel />
+          <TopPanel />
           <Pane metricKey={metricKey} nowMs={nowMs} compact first={false} />
         </>
       ) : (
@@ -124,9 +139,19 @@ interface PaneProps {
 }
 
 function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
-  const data        = useDataLog(s => s.data[metricKey])
-  const clearMetric = useDataLog(s => s.clearMetric)
-  const cfg         = METRIC_CONFIG[metricKey]
+  const data         = useDataLog(s => s.data[metricKey])
+  const clearMetric  = useDataLog(s => s.clearMetric)
+  const resetImuPeak = useCarplayStore(s => s.resetImuPeak)
+  const resetChtPeak = useCarplayStore(s => s.resetChtPeak)
+  const cfg          = METRIC_CONFIG[metricKey]
+
+  // RESET clears this metric's history and, for panel metrics, the matching
+  // session peak-hold shown in the live panel above.
+  const resetMetric = () => {
+    clearMetric(metricKey)
+    if (IMU_KEYS.includes(metricKey)) resetImuPeak()
+    if (CHT_KEYS.includes(metricKey)) resetChtPeak()
+  }
 
   const [viewOffset,   setViewOffset]   = useState(0)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -236,7 +261,7 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
             <>
               <button onClick={() => setConfirmReset(false)} style={actionBtn('#2a2a2a', '#aaa', compact)}>CANCEL</button>
               <button
-                onClick={() => { clearMetric(metricKey); setConfirmReset(false) }}
+                onClick={() => { resetMetric(); setConfirmReset(false) }}
                 style={actionBtn('#5c1010', '#ff6b6b', compact)}
               >CONFIRM</button>
             </>

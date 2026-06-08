@@ -108,6 +108,14 @@ export interface CarplayStore {
   pitchAngle: number | null  // degrees, positive = nose up
   piTemp: number | null      // celsius, Raspberry Pi CPU temperature
   gpsSky: GpsSky | null      // satellite sky-view snapshot (GPS troubleshooting)
+
+  // Session peak-hold — accumulated continuously in the socket handlers (NOT
+  // only while a graph is open) so the live panels can show "max lean 41°" /
+  // "peak G 0.6" / hottest cylinder for the whole ride. Reset via the buttons.
+  imuPeak: { leanL: number; leanR: number; g: number }  // deg left, deg right, G
+  chtPeak: { left: number; right: number }              // hottest °C seen each head
+  resetImuPeak: () => void
+  resetChtPeak: () => void
 }
 
 export const useCarplayStore = create<CarplayStore>((set) => ({
@@ -126,6 +134,10 @@ export const useCarplayStore = create<CarplayStore>((set) => ({
   ambientTemp: null,
   piTemp: null,
   gpsSky: null,
+  imuPeak: { leanL: 0, leanR: 0, g: 0 },
+  chtPeak: { left: 0, right: 0 },
+  resetImuPeak: () => set({ imuPeak: { leanL: 0, leanR: 0, g: 0 } }),
+  resetChtPeak: () => set({ chtPeak: { left: 0, right: 0 } }),
   saveSettings: (settings) => {
     set({ settings })
     socket.emit('saveSettings', settings)
@@ -260,13 +272,26 @@ socket.on('lean', (angle: number) => {
   useCarplayStore.setState({ leanAngle: angle })
   setTimeout(() => {
     const off = useCarplayStore.getState().settings?.leanOffset ?? 0
-    log('leanAngle', angle - off)   // log calibrated value (matches display)
+    const cal = angle - off
+    log('leanAngle', cal)   // log calibrated value (matches display)
+    // Peak-hold: leanR = max right (cal > 0), leanL = max left magnitude (cal < 0)
+    const p = useCarplayStore.getState().imuPeak
+    const leanR = cal > p.leanR ? cal : p.leanR
+    const leanL = -cal > p.leanL ? -cal : p.leanL
+    if (leanR !== p.leanR || leanL !== p.leanL)
+      useCarplayStore.setState({ imuPeak: { ...p, leanR, leanL } })
   }, 0)
 })
 socket.on('cht', (data: { left: number | null; right: number | null }) => {
   useCarplayStore.setState({ chtLeft: data.left, chtRight: data.right })
   if (data.left  !== null) log('chtLeft',  data.left)
   if (data.right !== null) log('chtRight', data.right)
+  // Peak-hold: hottest each head has reached this ride.
+  const p = useCarplayStore.getState().chtPeak
+  const left  = data.left  !== null && data.left  > p.left  ? data.left  : p.left
+  const right = data.right !== null && data.right > p.right ? data.right : p.right
+  if (left !== p.left || right !== p.right)
+    useCarplayStore.setState({ chtPeak: { left, right } })
 })
 socket.on('ambient', (temp: number) => {
   useCarplayStore.setState({ ambientTemp: temp })
@@ -278,7 +303,10 @@ socket.on('pi-temp', (data: { cpu: number }) => {
 })
 socket.on('gforce', (data: { x: number; y: number }) => {
   useCarplayStore.setState({ gForceX: data.x, gForceY: data.y })
-  log('gForce', Math.sqrt((data.x ?? 0) ** 2 + (data.y ?? 0) ** 2))
+  const g = Math.sqrt((data.x ?? 0) ** 2 + (data.y ?? 0) ** 2)
+  log('gForce', g)
+  const p = useCarplayStore.getState().imuPeak
+  if (g > p.g) useCarplayStore.setState({ imuPeak: { ...p, g } })
 })
 socket.on('pitch', (angle: number) => {
   useCarplayStore.setState({ pitchAngle: angle })

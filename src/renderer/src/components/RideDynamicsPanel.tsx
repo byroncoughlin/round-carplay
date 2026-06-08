@@ -1,4 +1,5 @@
 import { useCarplayStore } from '../store/store'
+import ResetMaxButton from './ResetMaxButton'
 
 // ── color helpers ─────────────────────────────────────────────────────────────
 // Lean: easy lean green, spirited amber, knee-down red. Tuned for a road bike.
@@ -183,11 +184,9 @@ export default function RideDynamicsPanel() {
         {stat('MAX R', `${Math.round(peak.leanR)}°`, '#ff8a65')}
         {stat('PITCH', pitch !== null ? (absPitch === 0 ? '0°' : `${pitchDir}${absPitch}°`) : '—', '#80cbc4')}
         {stat('PEAK G', peak.g > 0.05 ? peak.g.toFixed(2) : '—', '#ffb300')}
-        <div onClick={resetPeak} style={{
-          marginTop: 2, alignSelf: 'flex-end', cursor: 'pointer',
-          color: '#ff6b6b', fontSize: 12, fontWeight: 800, letterSpacing: 1,
-          fontFamily: 'monospace', border: '1.5px solid #ff6b6b55', borderRadius: 8, padding: '3px 10px',
-        }}>RESET PK</div>
+        <div style={{ marginTop: 4, alignSelf: 'flex-end' }}>
+          <ResetMaxButton onReset={resetPeak} width={132} />
+        </div>
       </div>
     </div>
   )

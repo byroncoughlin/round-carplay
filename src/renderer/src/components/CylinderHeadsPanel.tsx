@@ -1,5 +1,6 @@
 import { useCarplayStore } from '../store/store'
 import { useStableValue } from '../utils/smoothing'
+import ResetMaxButton from './ResetMaxButton'
 
 // Same thresholds/colors as CHTGauge.tempColor + dataLog CHT_ZONES.
 function chtZone(t: number): { label: string; color: string } {
@@ -106,16 +107,15 @@ export default function CylinderHeadsPanel() {
       {side(L, -1)}
 
       {/* CENTER — engine + ΔT (narrow; clears the floating ✕ which is up-right) */}
-      <div style={{ flex: '0 0 96px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, paddingTop: 24 }}>
+      <div style={{ flex: '0 0 124px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, paddingTop: 20 }}>
         <span style={{ color: '#888', fontSize: 11, fontWeight: 800, letterSpacing: 2, fontFamily: 'monospace' }}>◄ BOXER ►</span>
         <span style={{ color: '#888', fontSize: 12, fontWeight: 800, letterSpacing: 2, fontFamily: 'monospace', marginTop: 4 }}>ΔT</span>
         <span style={{ color: deltaColor, fontSize: 30, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1 }}>
           {delta !== null ? `${delta}°` : '—'}
         </span>
-        <div onClick={resetPeak} style={{
-          marginTop: 6, cursor: 'pointer', color: '#ff6b6b', fontSize: 11, fontWeight: 800,
-          letterSpacing: 1, fontFamily: 'monospace', border: '1.5px solid #ff6b6b55', borderRadius: 8, padding: '3px 8px',
-        }}>RESET PK</div>
+        <div style={{ marginTop: 8 }}>
+          <ResetMaxButton onReset={resetPeak} width={116} />
+        </div>
       </div>
 
       {side(R, 1)}

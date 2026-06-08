@@ -243,7 +243,7 @@ function Pane({ metricKey, nowMs, compact, first }: PaneProps) {
         <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', paddingTop: 3 }}>
           <div style={{
             width: '75%', height: 2, borderRadius: 1,
-            background: 'rgba(255,255,255,0.3)',
+            background: 'rgba(255,255,255,0.22)',
           }} />
         </div>
       )}

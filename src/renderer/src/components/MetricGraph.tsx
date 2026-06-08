@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useDataLog, METRIC_CONFIG, MetricKey } from '../store/dataLog'
+import GpsSkyPanel from './GpsSkyPanel'
 
 const WINDOW_MS  = 5 * 60 * 1000
 const MAX_AGE_MS = 8 * 60 * 60 * 1000
@@ -11,14 +12,20 @@ const SPLIT: Partial<Record<MetricKey, MetricKey[]>> = {
   ambientTemp: ['ambientTemp', 'piTemp'],
 }
 
+// GPS-derived metrics open a split too, but the TOP half is the live GPS Sky
+// View (satellite plot + signal + fix quality) instead of a second chart — so
+// tapping speed/heading/altitude doubles as GPS status & troubleshooting.
+const GPS_KEYS: MetricKey[] = ['speed', 'heading', 'altitude']
+
 interface Props {
   metricKey: MetricKey
   onClose: () => void
 }
 
 export default function MetricGraph({ metricKey, onClose }: Props) {
+  const isGps   = GPS_KEYS.includes(metricKey)
   const keys    = SPLIT[metricKey] ?? [metricKey]
-  const compact = keys.length > 1
+  const compact = isGps || keys.length > 1
 
   const [nowMs,       setNowMs]       = useState(() => Date.now())
   const [confirmQuit, setConfirmQuit] = useState(false)
@@ -66,15 +73,22 @@ export default function MetricGraph({ metricKey, onClose }: Props) {
         title="tap to close · hold to quit app"
       >✕</button>
 
-      {keys.map((k, i) => (
-        <Pane
-          key={k}
-          metricKey={k}
-          nowMs={nowMs}
-          compact={compact}
-          first={i === 0}
-        />
-      ))}
+      {isGps ? (
+        <>
+          <GpsSkyPanel />
+          <Pane metricKey={metricKey} nowMs={nowMs} compact first={false} />
+        </>
+      ) : (
+        keys.map((k, i) => (
+          <Pane
+            key={k}
+            metricKey={k}
+            nowMs={nowMs}
+            compact={compact}
+            first={i === 0}
+          />
+        ))
+      )}
 
       {/* Hold-✕-to-quit confirmation */}
       {confirmQuit && (

@@ -15,6 +15,28 @@ function log(key: MetricKey, val: number | null | undefined) {
 
 const URL = 'http://localhost:4000'
 
+// GPS Sky View — per-satellite troubleshooting snapshot (from gps.py GSV/GSA),
+// updated ~once per second. Drives the sky plot + signal bars + status panel.
+export interface GpsSat {
+  prn: number
+  el: number | null    // elevation 0-90°
+  az: number | null    // azimuth 0-360° (0 = true north)
+  snr: number | null   // carrier-to-noise, dB-Hz (~0 weak .. 50 strong)
+  used: boolean        // included in the position fix
+}
+export interface GpsSky {
+  fixType: 0 | 2 | 3   // 0 = no fix, 2 = 2D, 3 = 3D
+  satsUsed: number
+  satsInView: number
+  hdop: number | null
+  pdop: number | null
+  lat: number | null
+  lon: number | null
+  sats: GpsSat[]
+  ttff: number | null       // seconds to first fix (frozen once fixed)
+  acquiring: number | null  // seconds elapsed while still searching (live), null once fixed
+}
+
 // Socket.IO Setup
 const socket = io(URL, {
   transports: ['websocket'],
@@ -85,6 +107,7 @@ export interface CarplayStore {
   gForceY: number | null     // G, longitudinal (positive = forward)
   pitchAngle: number | null  // degrees, positive = nose up
   piTemp: number | null      // celsius, Raspberry Pi CPU temperature
+  gpsSky: GpsSky | null      // satellite sky-view snapshot (GPS troubleshooting)
 }
 
 export const useCarplayStore = create<CarplayStore>((set) => ({
@@ -102,6 +125,7 @@ export const useCarplayStore = create<CarplayStore>((set) => ({
   chtRight: null,
   ambientTemp: null,
   piTemp: null,
+  gpsSky: null,
   saveSettings: (settings) => {
     set({ settings })
     socket.emit('saveSettings', settings)
@@ -228,6 +252,9 @@ socket.on('gps', (data: { speed: number; heading: number; altitude: number }) =>
 })
 socket.on('gps-status', (data: { fix: boolean; sats: number }) => {
   useCarplayStore.setState({ gpsFix: data.fix, gpsSats: data.sats })
+})
+socket.on('gps-sky', (data: GpsSky) => {
+  useCarplayStore.setState({ gpsSky: data })
 })
 socket.on('lean', (angle: number) => {
   useCarplayStore.setState({ leanAngle: angle })

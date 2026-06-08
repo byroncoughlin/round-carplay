@@ -37,6 +37,7 @@ export class Socket extends EventEmitter {
       socket.on('pi-temp', (data: any)    => socket.broadcast.emit('pi-temp', data))
       socket.on('gps',     (data: any)    => socket.broadcast.emit('gps', data))
       socket.on('gps-status', (data: any) => socket.broadcast.emit('gps-status', data))
+      socket.on('gps-sky', (data: any)    => socket.broadcast.emit('gps-sky', data))
       socket.on('lean',    (angle: number) => socket.broadcast.emit('lean', angle))
       socket.on('cht',     (data: any)    => socket.broadcast.emit('cht', data))
       socket.on('gforce',  (data: any)    => socket.broadcast.emit('gforce', data))

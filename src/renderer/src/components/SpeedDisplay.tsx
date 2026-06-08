@@ -50,13 +50,16 @@ export default function SpeedDisplay() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
 
-      {/* ── GPS status chip — top-centre, only while there's no fix ── */}
+      {/* ── GPS status chip — top-centre, only while there's no fix.
+            Tap it to open the GPS Sky View (satellite troubleshooting). ── */}
       {!gpsFix && (
-        <div style={{
-          position: 'absolute', top: 5, left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', alignItems: 'center', gap: 5,
-          whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
-        }}>
+        <div
+          onClick={() => setActive('speed')}
+          style={{
+            position: 'absolute', top: 5, left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: 5,
+            whiteSpace: 'nowrap', cursor: 'pointer', zIndex: 2,
+          }}>
           <span
             className={gpsFix === false ? 'animate-pulse' : undefined}
             style={{ width: 7, height: 7, borderRadius: '50%', background: gpsDotColor, boxShadow: `0 0 6px ${gpsDotColor}88` }}

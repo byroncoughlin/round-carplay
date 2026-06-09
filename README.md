@@ -121,7 +121,7 @@ Everything connects to the Pi's GPIO or USB. Prices are what I actually paid
 | GPS backup cell | CR1220 coin cell (GPS module almanac, faster warm fix) | 1 | $2.49 |
 | IMU (lean / pitch / G) | Adafruit **BNO055** 9-DOF (UART mode) | 1 | $39.10 |
 | Ambient temp | BOJACK **DS18B20** waterproof probe kit (incl. pull-up) | 1 | $8.99 |
-| CHT amplifier | Adafruit **MAX31856** universal thermocouple board | 2 | $23.84 |
+| CHT amplifier | Adafruit **MAX31856** universal thermocouple board | 2 | $35.00 |
 | CHT thermocouple | K-type probe w/ **14 mm** spark-plug washer, 3 m lead | 2 | $31.98 |
 
 ### Real-time clock
@@ -141,7 +141,7 @@ Everything connects to the Pi's GPIO or USB. Prices are what I actually paid
 | Micro-HDMI adapter | Micro-HDMI M → HDMI F 180° angled (2-pack, used 1) | 1 | $9.99 |
 | USB-C → USB-A cable | Amazon Basics, 6 ft | 1 | $2.82 |
 
-**Parts subtotal: ≈ $533** (+ $13.84 Adafruit shipping & tax on the GPS order).
+**Parts subtotal: ≈ $544** (+ $13.84 Adafruit shipping & tax on the GPS order).
 Excludes the 3D-printed enclosure (own filament) and the iPhone you already own.
 
 > **Why these specific parts:**

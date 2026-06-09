@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 """
-cht_temp.py — MAX31855 cylinder head temperature reader
+cht_temp.py — MAX31856 cylinder head temperature reader
 Left cylinder:  SPI bus 0, CE0 (Pi Pin 24, GPIO8)
 Right cylinder: SPI bus 0, CE1 (Pi Pin 26, GPIO7)
 
-Hardware (per board):
-  VIN → 5V  (Pin 2 left, Pin 4 right)  — board regulates to 3.3V; DO stays
-                                          3.3V logic, so the Pi is safe
+Hardware (per board, Adafruit Universal Thermocouple Amplifier MAX31856):
+  VIN → 5V  (Pin 2 left, Pin 4 right)  — board regulates to 3.3V
   GND → any GND (Pin 9 left, Pin 25 right)
-  DO  → Pi Pin 21 (GPIO9,  SPI MISO)  [shared between both boards via splitter]
-  CLK → Pi Pin 23 (GPIO11, SPI CLK)   [shared between both boards via splitter]
+  SCK → Pi Pin 23 (GPIO11, SPI CLK)   [shared between both boards]
+  SDO → Pi Pin 21 (GPIO9,  SPI MISO)  [shared]
+  SDI → Pi Pin 19 (GPIO10, SPI MOSI)  [shared]
   CS  → Pin 24 (CE0) for left, Pin 26 (CE1) for right  [separate]
+  DRDY / FLT unconnected.
 
-Thermocouple wiring: red → red terminal, yellow → yellow terminal (ANSI K-type standard).
-SPI mode 0, 250kHz.
+Thermocouple wiring: yellow → T+, red → T-  (ANSI K-type: yellow is positive).
 
-Pi setup: uncomment 'dtparam=spi=on' in /boot/firmware/config.txt and reboot.
+Unlike the old MAX31855, the MAX31856 has writable config registers. They
+reset to defaults on power loss, so every read cycle checks CR0 and rewrites
+the config if needed (auto-convert mode, K-type, open-circuit detection).
 
+SPI mode 1, 250kHz.
+
+Pi setup: 'dtparam=spi=on' in /boot/firmware/config.txt.
 Systemd service: ~/.config/systemd/user/cht-temp.service
 """
 
@@ -27,102 +32,79 @@ import socketio
 INTERVAL   = 2      # seconds between readings
 SERVER_URL = 'http://localhost:4000'
 
-# Burst rejection: the two boards share the SPI MISO/CLK lines, so a dead or
-# absent board can intermittently corrupt the *other* board's reads — bursts of
-# wrong (typically low/negative) values that still pass the range check (e.g.
-# -20 C at room temp) and lasted up to ~4 readings (~8s) in testing. A sliding
-# median lets the stable true value outvote the burst (a step/slew filter can't:
-# the garbage ramps in <step jumps and reads as a consistent fake level). The
-# window must hold a majority of good samples through the longest burst, so
-# MEDIAN_WINDOW=9 (~18s) tolerates up to 4 consecutive bad reads. Trade-off: a
-# genuine temperature change lags ~half the window (~8s) — fine for a slow,
-# high-thermal-mass cylinder head. The real fix is the dead board on the bus.
-MEDIAN_WINDOW = 9
-
-# Bus corruption (from the dead/absent right board on the shared MISO) shows up
-# as wildly-low/negative thermocouple values while the chip's own internal die
-# temperature stays believable. Reject a reading only when it sits this far
-# *below* the internal temp — that still catches the deep garbage (-15/-20 °C at
-# boot) but must tolerate a large legit gap: inside the case the board's die runs
-# hot (Pi heat, enclosed air, e.g. ~35–55 °C) while the thermocouple sits on a
-# cold/off engine near ambient. A tight margin here wrongly nukes that real
-# reading. The sliding MedianFilter is the primary defense against bursts; this
-# is just a backstop for the deepest corruption.
-MIN_BELOW_INTERNAL = 40.0   # deg C
+CR0_VALUE = 0x90    # CMODE=1 (auto conversion), OCFAULT=01 (open-circuit detect)
+CR1_VALUE = 0x03    # K-type thermocouple
 
 sio = socketio.Client(reconnection=True, reconnection_attempts=0)
 
-def _read_raw(bus, device):
+
+def _open(device):
     spi = spidev.SpiDev()
-    spi.open(bus, device)
+    spi.open(0, device)
     spi.max_speed_hz = 250000
-    spi.mode = 0
-    raw = spi.readbytes(4)
-    spi.close()
-    val = (raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8) | raw[3]
+    spi.mode = 1
+    return spi
 
-    # No board present: a disconnected / unpowered MAX31855 leaves the SPI
-    # MISO line floating, which reads as all-zeros or all-ones. Neither is a
-    # real frame, so report '--' rather than a bogus 0 C.
-    if val == 0x00000000 or val == 0xFFFFFFFF:
+
+def _ensure_config(spi):
+    """Registers reset on power loss; rewrite config whenever CR0 is wrong.
+    Returns False if the chip won't take config (absent / wiring fault)."""
+    cr0 = spi.xfer2([0x00, 0])[1]
+    if cr0 == CR0_VALUE:
+        return True
+    spi.xfer2([0x80, CR0_VALUE])
+    spi.xfer2([0x81, CR1_VALUE])
+    if spi.xfer2([0x00, 0, 0])[1:] != [CR0_VALUE, CR1_VALUE]:
+        return False
+    time.sleep(0.2)  # let the first auto conversion complete
+    return True
+
+
+def read_max31856(device):
+    """Returns thermocouple °C, or None on fault / no board."""
+    try:
+        spi = _open(device)
+        if not _ensure_config(spi):
+            spi.close()
+            return None
+        regs = spi.xfer2([0x0A] + [0] * 6)[1:]  # CJTH CJTL LTCBH LTCBM LTCBL SR
+        spi.close()
+    except (IOError, OSError):
         return None
 
-    if val & 0x7:
-        return None  # fault (OC, SCG, or SCV)
-
-    # Sanity check via the chip's internal cold-junction temperature.
-    # A working MAX31855 always reports its own die temp (~ -40..150 C),
-    # independent of the thermocouple.  A dead / unpowered / disconnected
-    # board floats the SPI bus and returns impossible values (e.g. -128 C
-    # with no fault bits set) — reject those so the gauge shows '--'
-    # instead of a garbage reading.
-    internal_raw = (val >> 4) & 0xFFF
-    if internal_raw & 0x800:
-        internal_raw -= 0x1000
-    internal_c = internal_raw * 0.0625
-    if not (-40.0 <= internal_c <= 150.0):
+    # Floating bus = no board on this CS line.
+    if all(r == 0xFF for r in regs) or all(r == 0x00 for r in regs):
         return None
 
-    tc_raw = (val >> 18) & 0x3FFF
-    if tc_raw & 0x2000:
-        tc_raw -= 0x4000
-    tc_c = tc_raw * 0.25
+    if regs[5]:  # any fault bit set (open circuit, range, voltage)
+        return None
+
+    cj_raw = (regs[0] << 8) | regs[1]
+    if cj_raw & 0x8000:
+        cj_raw -= 0x10000
+    cj_c = cj_raw / 256.0
+    if not (-40.0 <= cj_c <= 125.0):
+        return None
+
+    tc_raw = (regs[2] << 16) | (regs[3] << 8) | regs[4]
+    if tc_raw & 0x800000:
+        tc_raw -= 0x1000000
+    tc_c = (tc_raw >> 5) * 0.0078125
     if not (-50.0 <= tc_c <= 1100.0):  # outside any real K-type CHT range
-        return None
-    # Physically impossible to be far colder than ambient (= the cold junction):
-    # reject the bus-corruption lows (worst right after boot — the "hang at 0").
-    if tc_c < internal_c - MIN_BELOW_INTERNAL:
         return None
     return round(tc_c, 2)
 
 
-def read_max31855(bus, device):
-    """Median of 3 quick reads — drops the odd single-frame SPI glitch before
-    it even reaches the spike filter. Returns None only if every read faulted."""
-    samples = []
-    for _ in range(3):
-        v = _read_raw(bus, device)
-        if v is not None:
-            samples.append(v)
-        time.sleep(0.004)
-    if not samples:
-        return None
-    samples.sort()
-    return samples[len(samples) // 2]
-
-
 class MedianFilter:
-    """Sliding-median filter over the last N readings — robust to bursts of bad
-    SPI frames (impulse noise): as long as a majority of the window is the real,
-    stable value it outvotes the garbage. None (genuine fault / no board) is
-    passed straight through as a gap and does not enter the window."""
+    """Sliding median over the last N readings — drops the odd glitched frame.
+    None (fault / no board) passes through as a gap, window untouched."""
 
-    def __init__(self, window=MEDIAN_WINDOW):
+    def __init__(self, window=3):
         self.window = window
         self.buf    = []
 
     def update(self, raw):
-        if raw is None:                 # genuine fault / no board → gap, untouched window
+        if raw is None:
             return None
         self.buf.append(raw)
         if len(self.buf) > self.window:
@@ -130,13 +112,16 @@ class MedianFilter:
         ordered = sorted(self.buf)
         return ordered[len(ordered) // 2]
 
+
 @sio.event
 def connect():
     print('[cht] Connected to CarPlay app')
 
+
 @sio.event
 def disconnect():
     print('[cht] Disconnected — will reconnect')
+
 
 def main():
     left_filter  = MedianFilter()
@@ -145,8 +130,8 @@ def main():
         try:
             sio.connect(SERVER_URL)
             while True:
-                left  = left_filter.update(read_max31855(0, 0))   # CE0
-                right = right_filter.update(read_max31855(0, 1))  # CE1
+                left  = left_filter.update(read_max31856(0))   # CE0
+                right = right_filter.update(read_max31856(1))  # CE1
 
                 sio.emit('cht', {'left': left, 'right': right})
                 print(f'[cht] L={left if left is not None else "--"}°C  R={"--" if right is None else right}°C')
@@ -161,6 +146,7 @@ def main():
             except Exception:
                 pass
             time.sleep(5)
+
 
 if __name__ == '__main__':
     main()

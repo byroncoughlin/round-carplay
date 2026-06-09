@@ -17,7 +17,7 @@ Only **three** lines are custom (the rest of config.txt is RPi OS default). Add
 these under the `[all]` section:
 
 ```ini
-dtparam=spi=on        # MAX31855 CHT thermocouple boards (SPI0: CE0=left, CE1=right)
+dtparam=spi=on        # MAX31856 CHT thermocouple boards (SPI0: CE0=left, CE1=right)
 dtoverlay=w1-gpio     # DS18B20 ambient temp probe (1-Wire on GPIO4 / Pin 7)
 dtparam=uart0=on      # BNO055 IMU in UART mode (GPIO14/15 = Pins 8/10 -> /dev/ttyAMA0)
 ```
@@ -55,7 +55,7 @@ sudo usermod -aG dialout,spi,i2c,gpio,plugdev byron   # re-login (or reboot) to 
 ```
 
 - `dialout` → `/dev/ttyAMA0` (BNO055 UART)
-- `spi` → `/dev/spidev0.*` (MAX31855 CHT)
+- `spi` → `/dev/spidev0.*` (MAX31856 CHT)
 - `gpio` → 1-Wire / general GPIO
 - `plugdev` → CarPlay USB dongle (see udev rule below)
 
@@ -102,7 +102,7 @@ Each script's header documents its exact wiring. Summary:
 | Sensor | Script | Bus | Pins |
 |---|---|---|---|
 | BNO055 IMU (lean/pitch/G) | `imu.py` | UART `/dev/ttyAMA0` | VIN→1, GND→6, **PS1→3.3V**, SDA→10 (RXD), SCL→8 (TXD) |
-| CHT left/right (MAX31855) | `cht_temp.py` | SPI0 | VIN→5V, GND, DO→21, CLK→23 (both shared via splitter), CS: left→24 (CE0), right→26 (CE1) |
+| CHT left/right (MAX31856) | `cht_temp.py` | SPI0 | VIN→5V (2 left, 4 right), GND (9 left, 25 right), SCK→23, SDO→21, SDI→19 (all three shared via splitter), CS: left→24 (CE0), right→26 (CE1). Thermocouple: **yellow→T+, red→T−** (ANSI K-type) |
 | Ambient (DS18B20, waterproof) | `ambient_temp.py` | 1-Wire | Data→7 (GPIO4), VCC→3.3V (Pin 17), GND, **4.7kΩ pull-up Data↔VCC** |
 | GPS (Adafruit Ultimate, USB) | `gps.py` | **USB** | Plug into any USB port — no GPIO wiring. CP210x bridge (`10c4:ea60`) → `/dev/ttyUSB0`, stable symlink `/dev/gps`. Emits `GN`-talker NMEA (GPS+GLONASS). |
 | Pi CPU temp (on-die) | `pi_temp.py` | — | No wiring. Reads `/sys/class/thermal/thermal_zone0/temp`. Shown under AMBIENT (tap → split graph). |

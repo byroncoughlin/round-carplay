@@ -348,3 +348,22 @@ dtparam=rtc_bbat_vchg=3000000
 Verify after: `sudo hwclock -r` reads correct time, and after a power-off of a
 few minutes the clock is still right on the next boot (no WiFi needed).
 
+### GPS backup battery (CR1220), faster warm fix
+
+The Adafruit Ultimate GPS has a coin-cell holder on the back (CR1220) for its own
+RTC and almanac. With a cell fitted the module keeps last-known position, time,
+and satellite data across power-off, so it gets a warm/hot fix in seconds instead
+of a 30+ s cold start. It's separate from the Pi RTC battery above and only
+affects fix speed, not the dash clock. The stock CR1220 is **not** rechargeable
+and the module has no charge circuit, so it slowly drains over months and is a
+replace-when-dead part.
+
+Optional mod to keep it topped up off the Pi's rechargeable RTC rail, so it
+recharges on every ride instead of dying. Run one wire from the Pi RTC battery
+positive through a Schottky diode (**BAT85**, band/cathode toward the GPS) into
+the GPS module's `VBAT` pad (the + side of the CR1220 holder). Ground is already
+shared over USB, so it's a single wire. The diode blocks backfeed and stops the
+GPS rail from overcharging the small Pi cell. **Remove the CR1220 before wiring
+this**; never trickle-charge the non-rechargeable cell. Skip the mod entirely if
+you'd rather just swap a fresh CR1220 once a year.
+

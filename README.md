@@ -10,12 +10,12 @@
 **A round-display Apple CarPlay dashboard with live motorcycle instrumentation, built for a 1976 BMW R75/6.**
 
 **▶ Try the live browser demo → [byronthegreat.com/projects/motocarplay](https://byronthegreat.com/projects/motocarplay/)**
-_(the dashboard UI running in your browser, driven by a simulated ride — the center CarPlay screen is a static screenshot)_
+_(the dashboard UI running in your browser, driven by a simulated ride; the center CarPlay screen is a static screenshot)_
 
-CarPlay runs in a centered square on an 800×800 round screen; the curved space
-around it is filled with sensor data read straight off the bike — cylinder-head
-temps, lean/pitch/G, GPS speed & heading, ambient + Pi temperature — plus an
-ambient blurred backdrop that bleeds the on-screen color out to the bezel.
+CarPlay runs in a centered square on an 800×800 round screen. The curved space
+around it shows sensor data read straight off the bike: cylinder-head temps,
+lean/pitch/G, GPS speed and heading, ambient and Pi temperature. A blurred
+backdrop bleeds the on-screen color out to the bezel.
 
 <p align="center">
   <img src="documentation/images/dashboard.png" alt="motoCarPlay dashboard" width="48%" />
@@ -24,7 +24,7 @@ ambient blurred backdrop that bleeds the on-screen color out to the bezel.
 > 📷 _On-bike photos of the display mounted in the R75/6 dash coming soon._
 <!-- Add real mounted/riding photos here, e.g. documentation/images/bike-01.jpg -->
 
-> **Heads-up — this is a personal build.** It's a hard fork of
+> **This is a personal build.** It's a hard fork of
 > [OneMakerShow/round-carplay](https://github.com/OneMakerShow/round-carplay)
 > (itself based on [pi-carplay](https://github.com/f-io/pi-carplay)), rewritten
 > around discrete sensors instead of an OBD/CAN bus. The R75/6 has no OBD port,
@@ -37,28 +37,27 @@ ambient blurred backdrop that bleeds the on-screen color out to the bezel.
 
 ### CarPlay, centered in the circle
 
-Wireless CarPlay (via a Carlinkit adapter) renders in a **565×565px** square —
-the largest square that fits inside the 800px circle — with a rounded card and a
-soft outer shadow. The four curved segments around it are the instrument cluster:
+Wireless CarPlay (via a Carlinkit adapter) renders in a **565×565px** square with
+a rounded card and soft outer shadow. The Waveshare 3.4″ panel is 800×800, so 565
+is the largest square that fits inside the circle. The four curved segments around
+it are the instrument cluster:
 
-| Arc | Shows |
+| Arc | Shows (left to right) |
 |---|---|
-| **Top** | GPS speed (mph) · compass heading · ambient temperature (tap → graph) |
-| **Bottom** | Lean-angle inclinometer (needle + tick marks) · pitch · altitude · G-force |
+| **Top** | Compass heading · GPS speed (mph) · ambient temperature (tap → graph) |
+| **Bottom** | Altitude · lean-angle inclinometer + pitch · G-force |
 | **Left / Right** | Cylinder-head temperature, one bar gauge per jug, color-coded by heat |
 
 ### Ambient blurred backdrop
 
-Instead of dead black around the square, motoCarPlay samples the live CarPlay
-frame, downscales it, and paints a heavily-blurred, scaled-up copy across the
-whole round display — the same trick used to letterbox vertical video. Each new
-frame is **eased onto the previous one** (a temporal crossfade) so the glow flows
-softly instead of strobing when something colorful scrolls on screen. The result
-is a "dreamy" halo that makes the round bezel feel like part of the screen. It's
-a one-tap toggle in Settings (**BACKDROP**), and costs almost nothing — the
-sample runs at ~10 fps on a tiny canvas.
+Instead of black around the square, motoCarPlay samples the live CarPlay frame,
+downscales it, and paints a blurred, scaled-up copy across the round display.
+It's the same trick used to letterbox vertical video. Each frame eases onto the
+last one so the glow flows softly instead of strobing when something colorful
+scrolls by. It's a one-tap toggle in Settings (**BACKDROP**) and costs almost
+nothing; the sample runs at ~10 fps on a tiny canvas.
 
-You can see the warm glow bleeding into the bezel in every screenshot on this page.
+You can see the warm glow bleeding into the bezel in every screenshot here.
 
 ### Live graphing with risk zones
 
@@ -71,9 +70,9 @@ matter for engine/board health get **color risk bands** painted under the trace:
 | **Cylinder-head temp** | cold (blue) → normal (green) → warm (amber) → hot (red) |
 | **Pi CPU temp** | healthy (green) → warm (amber) → throttle (red) |
 
-Tapping the **ambient** reading splits the screen into a **dual graph** —
-ambient on top, **Pi CPU temperature** on the bottom — so you can keep an eye on
-how hard the Pi is working inside a sealed case while you ride.
+Tap the **ambient** reading and the screen splits into a **dual graph**: ambient
+on top, **Pi CPU temperature** below. The Pi runs in a sealed case, so the CPU
+trace shows its thermal headroom at a glance.
 
 <p align="center">
   <img src="documentation/images/graph-split.png" alt="Ambient + Pi CPU split graph" width="32%" />
@@ -83,27 +82,19 @@ how hard the Pi is working inside a sealed case while you ride.
 
 ### Keeps the right time without WiFi
 
-A Raspberry Pi has no clock when it's powered off. motoCarPlay fixes that two
-ways: the **Pi 5 RTC battery** keeps correct time across power-off (right at
-boot, no network), and as an off-grid backup, `gps.py` **sets the system clock
-from GPS UTC** on the first valid fix if it's grossly wrong — so the dash time is
-correct even with no cell or WiFi for days. See
+A Pi has no clock when it's powered off. Two things fix that. The **Pi 5 RTC
+battery** holds the time across power-off, so the clock is right at boot with no
+network. As a backup, `gps.py` sets the system clock from GPS UTC on the first
+valid fix when the time is badly off, so the dash stays correct even after days
+with no cell or WiFi. See
 [`PI_SETUP.md`](PI_SETUP.md#gps-clock-set-no-wifi-time-fix) for details.
-
-### Other touches
-
-- **Pi health** — on-die CPU temperature is read and shown under the ambient
-  reading (and graphed), so thermal throttling never sneaks up on you.
-- **Rounded everything** — graphs, settings, and the idle view all share the
-  CarPlay card's rounded corners + outer shadow for a single cohesive surface.
-- **Kiosk-ready** — hides nav chrome for a clean, pure-dashboard look once dialed in.
 
 ---
 
-## The build (bill of materials)
+## Parts list
 
-Everything connects to the Pi's GPIO/USB — **no OBD adapter, no CAN bus**. Prices
-are what I actually paid (USD); your mileage will vary.
+Everything connects to the Pi's GPIO or USB. Prices are what I actually paid
+(USD); yours will vary.
 
 ### Compute & display
 
@@ -126,11 +117,12 @@ are what I actually paid (USD); your mileage will vary.
 |---|---|--:|--:|
 | GPS receiver | Adafruit Ultimate GPS GNSS w/ USB (99-ch, 10 Hz) | 1 | $29.95 |
 | GPS antenna | Adafruit External Active Antenna, 28 dB, 5 m, SMA | 1 | $21.50 |
-| Antenna pigtail | u.FL → SMA RG178 jumper (5-pack) | 1 | $6.99 |
-| IMU — lean / pitch / G | Adafruit **BNO055** 9-DOF (UART mode) | 1 | $39.10 |
+| Antenna pigtail | u.FL → SMA RG178 jumper (5-pack, used 1) | 1 | $6.99 |
+| GPS backup cell | CR1220 coin cell (GPS module almanac, faster warm fix) | 1 | $2.49 |
+| IMU (lean / pitch / G) | Adafruit **BNO055** 9-DOF (UART mode) | 1 | $39.10 |
 | Ambient temp | BOJACK **DS18B20** waterproof probe kit (incl. pull-up) | 1 | $8.99 |
-| CHT amplifier | **MAX31855** K-type thermocouple board | 2 | $11.92 |
-| CHT thermocouple | K-type probe w/ **14 mm** spark-plug washer, 3 m lead | 2 | $15.99 |
+| CHT amplifier | Adafruit **MAX31856** universal thermocouple board | 2 | $23.84 |
+| CHT thermocouple | K-type probe w/ **14 mm** spark-plug washer, 3 m lead | 2 | $31.98 |
 
 ### Real-time clock
 
@@ -149,27 +141,23 @@ are what I actually paid (USD); your mileage will vary.
 | Micro-HDMI adapter | Micro-HDMI M → HDMI F 180° angled (2-pack, used 1) | 1 | $9.99 |
 | USB-C → USB-A cable | Amazon Basics, 6 ft | 1 | $2.82 |
 
-**Parts subtotal: ≈ $502** (+ $13.84 Adafruit shipping & tax on the GPS order).
+**Parts subtotal: ≈ $533** (+ $13.84 Adafruit shipping & tax on the GPS order).
 Excludes the 3D-printed enclosure (own filament) and the iPhone you already own.
-
-> The two ×2 lines (MAX31855, CHT probes) show the price I recorded for that
-> line. If either was a per-unit price rather than the pair, the total rises by
-> that amount — easy to adjust.
 
 > **Why these specific parts:**
 > - The R75/6 takes **14 mm** spark plugs, so the thermocouple washers are 14 mm.
-> - The **BNO055 runs over UART, not I2C** — the Pi 5's RP1 I2C controller can't
->   tolerate the BNO055's clock-stretching. (Details in `sensors/imu.py`.)
-> - The Waveshare panel is **HDMI**, so the Pi 5's micro-HDMI is adapted/cabled
->   to it — hence the little stack of HDMI adapters above.
+> - The **BNO055 runs over UART, not I2C**. I had trouble with it on I2C.
+>   (Details in `sensors/imu.py`.)
+> - The Waveshare panel is **HDMI**, so the Pi 5's micro-HDMI is adapted to it.
+>   That's the little stack of HDMI adapters above.
 
 ---
 
 ## Instrument wiring & Pi setup
 
-Full reproduce-from-a-fresh-flash instructions — `config.txt` overlays, sensor
-wiring pinouts, udev rules, the systemd user services, and the gotchas learned
-the hard way — live in **[`PI_SETUP.md`](PI_SETUP.md)**.
+Full reproduce-from-a-fresh-flash instructions live in
+**[`PI_SETUP.md`](PI_SETUP.md)**: `config.txt` overlays, sensor wiring pinouts,
+udev rules, the systemd user services, and the gotchas learned the hard way.
 
 Sensor scripts (`sensors/*.py`) each document their exact wiring in the file
 header. Quick map:
@@ -177,7 +165,7 @@ header. Quick map:
 | Sensor | Script | Bus |
 |---|---|---|
 | BNO055 IMU (lean/pitch/G) | `imu.py` | UART `/dev/ttyAMA0` |
-| CHT left/right (MAX31855 ×2) | `cht_temp.py` | SPI0 (CE0 = left, CE1 = right) |
+| CHT left/right (MAX31856 ×2) | `cht_temp.py` | SPI0 (CE0 = left, CE1 = right) |
 | Ambient (DS18B20) | `ambient_temp.py` | 1-Wire (GPIO4) |
 | GPS (Adafruit Ultimate, USB) | `gps.py` | USB serial `/dev/gps` |
 | Pi CPU temp | `pi_temp.py` | `/sys/class/thermal` (no wiring) |
@@ -234,7 +222,7 @@ resets the dongle); most other toggles apply immediately.
 
 | Setting | Typical | What it does |
 |---|---|---|
-| **WIDTH / HEIGHT** | 565 × 565 | Resolution sent to the phone — CarPlay renders its UI at this size. Matches the centered square. |
+| **WIDTH / HEIGHT** | 565 × 565 | Resolution sent to the phone; CarPlay renders its UI at this size. It's the largest square inside the 800×800 Waveshare circle. |
 | **FPS** | 60 | Frames per second requested from the phone. |
 | **DPI** | 140 | UI scaling hint to the phone. Higher = denser. |
 | **FORMAT** | 5 | Video codec (5 = H.264). |
@@ -254,7 +242,7 @@ resets the dongle); most other toggles apply immediately.
 | **AUDIO / NAV VOL** | Separate volume for media vs. turn-by-turn voice. |
 | **MICROPHONE** | Source for Siri/voice: OS (USB mic) or BOX (dongle mic). |
 | **WIFI TYPE** | 2.4 / 5 GHz band the dongle broadcasts for wireless CarPlay. |
-| **TILT CALIBRATION** | Zero the lean/pitch readout — sit the bike level, **SET LEVEL**. |
+| **TILT CALIBRATION** | Zero the lean/pitch readout. Sit the bike level, then **SET LEVEL**. |
 | **BINDINGS** | Map GPIO buttons to CarPlay controls (select, d-pad, home, etc.). |
 
 ---
@@ -264,7 +252,7 @@ resets the dongle); most other toggles apply immediately.
 _Apple and CarPlay are trademarks of Apple Inc. This project is not affiliated
 with or endorsed by Apple. All trademarks are the property of their respective
 owners. Mounting a screen on a motorcycle and reading it while riding is done at
-your own risk — keep your eyes on the road._
+your own risk. Keep your eyes on the road._
 
 ## Credits
 
@@ -273,4 +261,4 @@ your own risk — keep your eyes on the road._
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](LICENSE).

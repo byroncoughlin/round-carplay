@@ -15,7 +15,7 @@ const scope = self as unknown as Worker
 // paint a blurred, scaled-up copy behind the gauges (fills the round display).
 // Heavily downscaled — the blur hides it and it keeps the Pi cheap. Toggled at
 // runtime from the renderer (Settings → BACKDROP) via a 'set-backdrop' message.
-const BACKDROP_INTERVAL_MS = 100   // ~10 fps — more steps for the temporal blend
+const BACKDROP_INTERVAL_MS = 200   // ~5 fps — ambient fill, cheap on the Pi
 const BACKDROP_WIDTH = 96          // px; height scaled to keep aspect
 
 export class RendererWorker {

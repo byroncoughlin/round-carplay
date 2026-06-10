@@ -97,7 +97,8 @@ mkdir -p /home/byron/sensors
 # from repo:  scp sensors/{imu,cht_temp,ambient_temp,pi_temp,gps}.py byron@motocarplay.local:/home/byron/sensors/
 ```
 
-Each script's header documents its exact wiring. Summary:
+Each script's header documents its exact wiring. For a physical 40-pin header
+map (with a pin diagram), see [`WIRING.md`](WIRING.md). Summary:
 
 | Sensor | Script | Bus | Pins |
 |---|---|---|---|

@@ -170,6 +170,9 @@ header. Quick map:
 | GPS (Adafruit Ultimate, USB) | `gps.py` | USB serial `/dev/gps` |
 | Pi CPU temp | `pi_temp.py` | `/sys/class/thermal` (no wiring) |
 
+For the full physical pin map (every wire to every GPIO pin), see
+**[`WIRING.md`](WIRING.md)**.
+
 ---
 
 ## Build & deploy the app

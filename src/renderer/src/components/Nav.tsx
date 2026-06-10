@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import TuneIcon from '@mui/icons-material/Tune'
@@ -33,7 +33,7 @@ function AirheadIcon() {
 import HelpCenterIcon from '@mui/icons-material/HelpCenter'
 import CameraIcon from '@mui/icons-material/Camera'
 import CloseIcon from '@mui/icons-material/Close'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useStatusStore } from '../store/store'
 import { useTheme } from '@mui/material/styles'
 import { ExtraConfig } from '../../../main/Globals'
@@ -51,6 +51,11 @@ export default function Nav({ receivingVideo }: NavProps) {
   const isStreaming       = useStatusStore(s => s.isStreaming)
   const cameraFound       = useStatusStore(s => s.cameraFound)
   const [confirmQuit, setConfirmQuit] = useState(false)
+  const navigate = useNavigate()
+  // Close (✕) tab: short tap closes the current view (back to the dashboard);
+  // press-and-hold opens the quit prompt — same as the graph views, so a stray
+  // tap on ✕ can't quit the whole app.
+  const holdRef = useRef<{ t: ReturnType<typeof setTimeout> | null; fired: boolean }>({ t: null, fired: false })
 
   // NB: every hook (incl. useState above) must run before this early return,
   // or React throws "rendered fewer hooks than expected" and unmounts the tree.
@@ -87,6 +92,17 @@ export default function Nav({ receivingVideo }: NavProps) {
     window.carplay.quit().catch(err => console.error('Quit failed:', err))
   }
 
+  const closeHoldStart = () => {
+    holdRef.current.fired = false
+    holdRef.current.t = setTimeout(() => { holdRef.current.fired = true; setConfirmQuit(true) }, 800)
+  }
+  const closeHoldEnd = () => {
+    if (holdRef.current.t) clearTimeout(holdRef.current.t)
+    if (!holdRef.current.fired) navigate('/')   // tap → close the current view
+    holdRef.current.fired = false
+  }
+  const closeHoldCancel = () => { if (holdRef.current.t) clearTimeout(holdRef.current.t) }
+
   return (
     <>
       <Tabs
@@ -117,7 +133,13 @@ export default function Nav({ receivingVideo }: NavProps) {
             }
           }}
         />
-        <Tab icon={<CloseIcon />} onClick={() => setConfirmQuit(true)} />
+        <Tab
+          icon={<CloseIcon />}
+          onPointerDown={closeHoldStart}
+          onPointerUp={closeHoldEnd}
+          onPointerLeave={closeHoldCancel}
+          title="tap to close · hold to quit app"
+        />
       </Tabs>
 
       {confirmQuit && (

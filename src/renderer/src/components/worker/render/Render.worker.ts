@@ -16,7 +16,9 @@ const scope = self as unknown as Worker
 // Heavily downscaled — the blur hides it and it keeps the Pi cheap. Toggled at
 // runtime from the renderer (Settings → BACKDROP) via a 'set-backdrop' message.
 const BACKDROP_INTERVAL_MS = 200   // ~5 fps — ambient fill, cheap on the Pi
-const BACKDROP_WIDTH = 96          // px; height scaled to keep aspect
+const BACKDROP_WIDTH = 64          // px; height scaled to keep aspect. Tiny on
+                                   // purpose: the ~16x upscale is most of the blur,
+                                   // and the smaller frame is cheaper to resize/draw.
 
 export class RendererWorker {
   private readonly vendorHeaderSize = 20

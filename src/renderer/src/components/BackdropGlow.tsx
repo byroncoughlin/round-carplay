@@ -90,7 +90,7 @@ export default function BackdropGlow() {
         // "dreamy" look: most of the blur now happens cheaply in the canvas
         // (see SRC_BLUR); this small CSS blur just smooths the upscale. Heavy
         // overscale gives a smooth ambient halo.
-        filter: 'blur(10px) saturate(1.5) brightness(0.92)',
+        filter: 'blur(6px) saturate(1.5) brightness(0.92)',
         transform: 'scale(1.32)',
         willChange: 'transform',
         pointerEvents: 'none',

@@ -115,6 +115,26 @@ ssh … "sed -i 's# --remote-debugging-port=9222 --remote-allow-origins=\*##' ~/
   idle overlay so the graph (z1400) shows. Speed/heading taps are blocked while
   idle (behind the overlay).
 
+### Instrumenting the workers over CDP (perf probing)
+- Workers show up in `http://localhost:9222/json` as `type: worker`, but their
+  direct `webSocketDebuggerUrl` **does not answer** — connect to the **page**
+  target instead, send `Target.setAutoAttach {autoAttach, flatten:true}`, and
+  collect `Target.attachedToTarget` events. The Render worker's `targetInfo.url`
+  contains `Render.worker`; talk to it by adding its `sessionId` to messages on
+  the page websocket.
+- Module-scope objects (the `RendererWorker` instance) are unreachable from
+  `Runtime.evaluate`, but **prototype patching works**: wrap
+  `VideoDecoder.prototype.decode` (chunk rate + `decodeQueueSize`),
+  `WebGLRenderingContext.prototype.texImage2D`/`drawArrays` (draw rate/cost),
+  `createImageBitmap` (convert cost). Note the worker uses **WebGL1** —
+  `getContext('webgl2')` returns null in workers on this Mesa/V3D.
+- Toggle settings live without the UI: python-socketio to `:4000`, wait for the
+  `settings` event, mutate, `emit('saveSettings', s)`. Restore when done (it
+  writes config.json).
+- Synthetic video load (full-screen motion): hold a drag and wiggle —
+  `Input.dispatchMouseEvent` mousePressed at (400,400), then mouseMoved
+  oscillating ±120 px at ~30 Hz, mouseReleased at the end.
+
 ### After any debug session, verify clean state
 App running normally (no `--remote-debugging-port` in the process), `9222`
 closed, `4000` listening, `gps.service` + `cht-temp.service` active.

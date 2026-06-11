@@ -61,25 +61,28 @@ export class WebGL2Renderer implements FrameRenderer {
     this.#texture = texture
   }
 
-  async draw(frame: VideoFrame): Promise<void> {
+  draw(frame: VideoFrame): void {
     const gl = this.#ctx!
-    const bitmap = await createImageBitmap(frame)
 
-    if (this.#canvas) {
+    // Setting canvas.width resets the GL drawing buffer even when the value is
+    // unchanged — doing it per frame reallocated the surface ~50×/s. Resize
+    // only when the stream dimensions actually change.
+    if (
+      this.#canvas &&
+      (this.#canvas.width !== frame.displayWidth || this.#canvas.height !== frame.displayHeight)
+    ) {
       this.#canvas.width = frame.displayWidth
       this.#canvas.height = frame.displayHeight
+      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
     }
 
-    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
-    gl.clearColor(0, 0, 0, 1)
-    gl.clear(gl.COLOR_BUFFER_BIT)
-
     gl.bindTexture(gl.TEXTURE_2D, this.#texture)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap)
+    // Upload straight from the VideoFrame — no createImageBitmap round trip
+    // (which did a full CPU YUV→RGBA conversion + copy per frame).
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, frame)
 
     gl.drawArrays(gl.TRIANGLE_FAN, 0, 4)
 
-    bitmap.close()
     frame.close()
   }
 }

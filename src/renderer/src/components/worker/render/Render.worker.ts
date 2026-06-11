@@ -1,4 +1,4 @@
-import { getDecoderConfig, getNaluFromStream, isKeyFrame, NaluTypes } from './lib/utils'
+import { getDecoderConfig, getNaluFromStream, NaluTypes } from './lib/utils'
 import { InitEvent, WorkerEvent } from './RenderEvents'
 import { WebGL2Renderer } from './WebGL2Renderer'
 import { WebGLRenderer } from './WebGLRenderer'
@@ -24,7 +24,7 @@ export class RendererWorker {
   private readonly vendorHeaderSize = 20
   private renderer: FrameRenderer | null = null
   private videoPort: MessagePort | null = null
-  private pendingFrame: VideoFrame | null = null
+  private canvas: OffscreenCanvas | null = null
   private startTime: number | null = null
   private frameCount = 0
   private fps = 0
@@ -35,11 +35,10 @@ export class RendererWorker {
   private awaitingValidKeyframe = true
   private hardwareAccelerationTested = false
   private selectedRenderer: string | null = null
-  private renderScheduled = false
-  private lastRenderTime: number = 0
-  private frameInterval: number = 1000 / 60 // 60Hz
   private lastBackdropTime = 0
   private backdropEnabled = true
+  private backdropCanvas: OffscreenCanvas | null = null
+  private backdropCtx: OffscreenCanvasRenderingContext2D | null = null
 
   setBackdrop = (enabled: boolean) => {
     this.backdropEnabled = enabled
@@ -60,55 +59,37 @@ export class RendererWorker {
       this.fps = ++this.frameCount / elapsed
     }
 
-    this.renderFrame(frame)
-  }
+    // Draw the instant a frame decodes — no requestAnimationFrame wait. The
+    // compositor samples the latest canvas commit on its own vsync, so pacing
+    // here only added latency: frames arrive every ~16.9ms while vsync is
+    // 16.7ms, so an aligned draw drifts past the boundary every few frames,
+    // waits two vsyncs, and gets overwritten — measured ~49fps shown of 60
+    // received, as a rhythmic judder. Immediate draw shows every frame.
+    this.renderer?.draw(frame)
 
-  private renderFrame = (frame: VideoFrame) => {
-    this.pendingFrame?.close()
-    this.pendingFrame = frame
-
-    if (!this.renderScheduled) {
-      this.renderScheduled = true
-      requestAnimationFrame(this.renderAnimationFrame)
-    }
-  }
-
-  private renderAnimationFrame = () => {
-    this.renderScheduled = false
-
+    // Ambient backdrop tap — copy from the just-drawn GL canvas (GPU→GPU)
+    // instead of converting the software VideoFrame on this thread, which
+    // stalled decode for up to ~7ms every sample (a visible 5Hz hitch).
+    // Same-task readback is safe: the GL backbuffer persists until this task
+    // ends. Best-effort — any failure is swallowed so video is never hurt.
     const now = performance.now()
-    if (now - this.lastRenderTime < this.frameInterval * 0.75) {
-      requestAnimationFrame(this.renderAnimationFrame)
-      return
-    }
-
-    if (this.pendingFrame) {
-      const frame = this.pendingFrame
-      // Ambient backdrop tap — clone BEFORE draw() (which closes the frame),
-      // downscale, and hand a small bitmap to the main thread. Best-effort:
-      // any failure is swallowed so it can never disrupt video.
-      if (this.backdropEnabled && now - this.lastBackdropTime >= BACKDROP_INTERVAL_MS) {
-        this.lastBackdropTime = now
-        try {
-          const clone = frame.clone()
-          const fw = clone.displayWidth || 1
-          const fh = clone.displayHeight || 1
-          const th = Math.max(1, Math.round(BACKDROP_WIDTH * (fh / fw)))
-          createImageBitmap(clone, {
-            resizeWidth: BACKDROP_WIDTH,
-            resizeHeight: th,
-            resizeQuality: 'low',
-          })
-            .then((bmp) => scope.postMessage({ type: 'backdrop-frame', bitmap: bmp }, [bmp]))
-            .catch(() => {})
-            .finally(() => clone.close())
-        } catch {
-          /* clone unsupported / frame already gone — skip this snapshot */
+    if (this.backdropEnabled && this.canvas && now - this.lastBackdropTime >= BACKDROP_INTERVAL_MS) {
+      this.lastBackdropTime = now
+      try {
+        const cw = this.canvas.width || 1
+        const th = Math.max(1, Math.round(BACKDROP_WIDTH * ((this.canvas.height || 1) / cw)))
+        if (!this.backdropCanvas || this.backdropCanvas.width !== BACKDROP_WIDTH || this.backdropCanvas.height !== th) {
+          this.backdropCanvas = new OffscreenCanvas(BACKDROP_WIDTH, th)
+          this.backdropCtx = this.backdropCanvas.getContext('2d')
         }
+        if (this.backdropCtx) {
+          this.backdropCtx.drawImage(this.canvas, 0, 0, BACKDROP_WIDTH, th)
+          const bmp = this.backdropCanvas.transferToImageBitmap()
+          scope.postMessage({ type: 'backdrop-frame', bitmap: bmp }, [bmp])
+        }
+      } catch {
+        /* canvas not readable this tick — skip this snapshot */
       }
-      this.renderer?.draw(frame)
-      this.pendingFrame = null
-      this.lastRenderTime = now
     }
   }
 
@@ -118,6 +99,7 @@ export class RendererWorker {
 
   init = async (event: InitEvent & { platform?: string }) => {
     this.useHardware = event.useHardware
+    this.canvas = event.canvas
 
     this.videoPort = event.videoPort
     this.videoPort.onmessage = (ev: MessageEvent<ArrayBuffer>) => {
@@ -250,7 +232,9 @@ export class RendererWorker {
     const cfg: VideoDecoderConfig = {
       ...structuredClone(config),
       hardwareAcceleration: accel,
-      optimizeForLatency: false
+      // live interactive stream: never let the decoder buffer frames for
+      // reordering — output each frame as soon as it decodes
+      optimizeForLatency: true
     }
 
     try {
@@ -264,6 +248,28 @@ export class RendererWorker {
     }
   }
 
+  // Cheap Annex B keyframe check: walk start codes and stop at the first VCL
+  // NALU (IDR=5 → key, non-IDR=1 → delta). The library isKeyFrame() walks the
+  // ENTIRE buffer through a Bitstream wrapper looking for an IDR — for every
+  // delta frame (i.e. almost all of them) that's a full scan, twice per frame
+  // counting the SPS hunt. VCL NALUs sit right after the parameter sets, so
+  // this exits within the first few hundred bytes.
+  private static isKeyFrameFast(data: Uint8Array): boolean {
+    const n = data.length
+    for (let i = 0; i + 3 < n; i++) {
+      if (data[i] !== 0 || data[i + 1] !== 0) continue
+      let off = 0
+      if (data[i + 2] === 1) off = 3
+      else if (data[i + 2] === 0 && data[i + 3] === 1) off = 4
+      if (!off || i + off >= n) continue
+      const type = data[i + off] & 0x1f
+      if (type === NaluTypes.IDR) return true
+      if (type === NaluTypes.NDR) return false
+      i += off // skip past the start code; loop's i++ steps onto the NALU body
+    }
+    return false
+  }
+
   private async processRaw(buffer: ArrayBuffer) {
     if (!buffer.byteLength) return
 
@@ -271,13 +277,16 @@ export class RendererWorker {
     const videoData =
       data.length > this.vendorHeaderSize ? data.subarray(this.vendorHeaderSize) : data
 
-    const sps = getNaluFromStream(videoData, NaluTypes.SPS)
-    const key = isKeyFrame(videoData)
+    const key = RendererWorker.isKeyFrameFast(videoData)
     const now = performance.now()
 
-    if (sps && !this.isConfigured) {
-      console.debug('[RENDER.WORKER] SPS detected, length:', sps.rawNalu?.length)
-      this.lastSPS = sps.rawNalu
+    if (!this.isConfigured) {
+      // only hunt for an SPS while we still need one to configure the decoder
+      const sps = getNaluFromStream(videoData, NaluTypes.SPS)
+      if (sps) {
+        console.debug('[RENDER.WORKER] SPS detected, length:', sps.rawNalu?.length)
+        this.lastSPS = sps.rawNalu
+      }
     }
 
     if (this.awaitingValidKeyframe && !key) {

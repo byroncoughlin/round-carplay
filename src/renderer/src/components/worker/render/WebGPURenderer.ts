@@ -103,9 +103,12 @@ export class WebGPURenderer implements FrameRenderer {
     await this.#started
     if (!this.#canvas || !this.#ctx || !this.#device || !this.#pipeline || !this.#sampler) return
 
-    // 1) Canvas auf sichtbare Abmessungen setzen
-    this.#canvas.width = frame.displayWidth
-    this.#canvas.height = frame.displayHeight
+    // resize only when the stream dimensions change (setting width resets the
+    // drawing buffer even for the same value)
+    if (this.#canvas.width !== frame.displayWidth || this.#canvas.height !== frame.displayHeight) {
+      this.#canvas.width = frame.displayWidth
+      this.#canvas.height = frame.displayHeight
+    }
 
     // 2) Versuch, importExternalTexture zu verwenden
     let externalTexture: GPUExternalTexture

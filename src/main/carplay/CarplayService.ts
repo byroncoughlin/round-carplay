@@ -59,6 +59,8 @@ export class CarplayService {
   private stopping = false
   private shuttingDown = false
   private audioInfoSent = false
+  private lastResW = 0
+  private lastResH = 0
 
   constructor() {
     this.driver.on('message', (msg) => {
@@ -76,10 +78,16 @@ export class CarplayService {
         this.webContents.send('carplay-event', { type: 'unplugged' })
         this.stop().catch(console.error)
       } else if (msg instanceof VideoData) {
-        this.webContents.send('carplay-event', {
-          type: 'resolution',
-          payload: { width: msg.width, height: msg.height }
-        })
+        // announce the resolution once / on change — not before every frame
+        // (this used to be 60 extra IPC messages per second)
+        if (msg.width !== this.lastResW || msg.height !== this.lastResH) {
+          this.lastResW = msg.width
+          this.lastResH = msg.height
+          this.webContents.send('carplay-event', {
+            type: 'resolution',
+            payload: { width: msg.width, height: msg.height }
+          })
+        }
         this.sendChunked('carplay-video-chunk', msg.data?.buffer as ArrayBuffer, 512 * 1024)
       } else if (msg instanceof AudioData) {
         if (msg.data) {
@@ -167,7 +175,13 @@ export class CarplayService {
       this.webContents?.send('carplay-event', { type: 'failure' })
     })
 
-    ipcMain.handle('carplay-start', async () => this.start())
+    ipcMain.handle('carplay-start', async () => {
+      // a (re)loaded renderer needs the resolution event even if the service
+      // is already streaming — forget the cache so the next frame resends it
+      this.lastResW = 0
+      this.lastResH = 0
+      return this.start()
+    })
     ipcMain.handle('carplay-stop', async () => this.stop())
     ipcMain.handle('carplay-sendframe', async () => this.driver.send(new SendCommand('frame')))
     ipcMain.on('carplay-touch', (_, data) => {
@@ -180,6 +194,8 @@ export class CarplayService {
 
   public attachRenderer(webContents: WebContents) {
     this.webContents = webContents
+    this.lastResW = 0
+    this.lastResH = 0
   }
 
   public markDongleConnected(connected: boolean) {
@@ -231,6 +247,10 @@ export class CarplayService {
       }, 15000)
       this.started = true
       this.audioInfoSent = false
+      // forget the cached resolution so the next stream re-announces it (the
+      // renderer flips receivingVideo back on from that event)
+      this.lastResW = 0
+      this.lastResH = 0
       console.log('[CarplayService] CarPlay started')
     } catch (err) {
       console.error('[CarplayService] Error during start()', err)
@@ -253,6 +273,8 @@ export class CarplayService {
     }
     this.started = false
     this.audioInfoSent = false
+    this.lastResW = 0
+    this.lastResH = 0
     this.stopping = false
     console.log('[CarplayService] CarPlay stopped')
   }

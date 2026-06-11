@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { HashRouter as Router, Route, Routes } from "react-router-dom";
 import Settings from "./components/Settings";
+import SysMonitor from "./components/SysMonitor";
 import Info from "./components/Info";
 import Home from "./components/Home";
 import HomeView from "./components/HomeView";
@@ -108,6 +109,9 @@ function App() {
           {/* Ambient blurred-video fill — sits behind the center square (z5)
               and gauges (z10), filling the round display with on-screen color */}
           <BackdropGlow />
+
+          {/* Hidden Pi CPU/RAM monitor — two-finger press-and-hold to open */}
+          <SysMonitor />
 
           {/* Top arc — GPS Speed */}
           <div style={{

@@ -42,6 +42,7 @@ ipcRenderer.on('carplay-audio-chunk', (_event, payload) => {
 
 const api = {
   quit: () => ipcRenderer.invoke('quit'),
+  systemStats: () => ipcRenderer.invoke('system-stats'),
 
   onUSBResetStatus: (callback: ApiCallback<any>) => {
     ipcRenderer.on('usb-reset-start', callback)

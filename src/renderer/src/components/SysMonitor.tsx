@@ -82,8 +82,8 @@ export default function SysMonitor() {
   const s = stats
   const row = (label: string, value: string, color?: string): React.JSX.Element => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-      <span style={{ color: '#8b9096', fontSize: 11, letterSpacing: 1 }}>{label}</span>
-      <span className="mono" style={{ color: color ?? '#e8eaed', fontSize: 15, fontWeight: 700, fontFamily: 'monospace' }}>{value}</span>
+      <span style={{ color: '#9aa0a6', fontSize: 15, letterSpacing: 1, fontWeight: 600 }}>{label}</span>
+      <span className="mono" style={{ color: color ?? '#e8eaed', fontSize: 24, fontWeight: 800, fontFamily: 'monospace' }}>{value}</span>
     </div>
   )
 
@@ -100,41 +100,43 @@ export default function SysMonitor() {
       <div
         onPointerDown={(e) => e.stopPropagation()}
         style={{
-          width: 320, maxWidth: '76vmin',
+          // fill the center CarPlay square (70.625% of the round display)
+          width: 'calc(min(100vw, 100vh) * 0.706)',
+          height: 'calc(min(100vw, 100vh) * 0.706)',
           background: '#121316', border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 18, padding: '18px 20px 16px',
+          borderRadius: 36, padding: '24px 28px',
           boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
-          display: 'flex', flexDirection: 'column', gap: 12,
+          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ color: '#ffca28', fontSize: 12, fontWeight: 800, letterSpacing: 2 }}>PI MONITOR</span>
+          <span style={{ color: '#ffca28', fontSize: 18, fontWeight: 800, letterSpacing: 2.5 }}>PI MONITOR</span>
           <button
             onPointerDown={(e) => { e.stopPropagation(); setOpen(false) }}
-            style={{ background: 'none', border: 'none', color: '#8b9096', fontSize: 20, lineHeight: 1, cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: '#9aa0a6', fontSize: 30, lineHeight: 1, cursor: 'pointer', padding: '0 4px' }}
           >✕</button>
         </div>
 
         {!s || s.error ? (
-          <div style={{ color: '#8b9096', fontSize: 13, padding: '8px 0' }}>
+          <div style={{ color: '#8b9096', fontSize: 18, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {s?.error ? 'stats unavailable' : 'reading…'}
           </div>
         ) : (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', flex: 1, gap: 6, padding: '10px 0' }}>
             {/* CPU */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span style={{ color: '#8b9096', fontSize: 11, letterSpacing: 1 }}>CPU</span>
-                <span className="mono" style={{ fontFamily: 'monospace', fontSize: 30, fontWeight: 800, color: heat(s.cpu ?? 0, 60, 85) }}>
-                  {s.cpu ?? '--'}<span style={{ fontSize: 14, color: '#8b9096' }}>%</span>
+                <span style={{ color: '#9aa0a6', fontSize: 15, letterSpacing: 1, fontWeight: 600 }}>CPU</span>
+                <span className="mono" style={{ fontFamily: 'monospace', fontSize: 58, fontWeight: 800, lineHeight: 0.9, color: heat(s.cpu ?? 0, 60, 85) }}>
+                  {s.cpu ?? '--'}<span style={{ fontSize: 22, color: '#8b9096' }}>%</span>
                 </span>
               </div>
               {s.cores && s.cores.length > 0 && (
-                <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                   {s.cores.map((c, i) => (
-                    <div key={i} style={{ flex: 1, height: 26, background: '#1e2125', borderRadius: 4, position: 'relative', overflow: 'hidden' }}>
+                    <div key={i} style={{ flex: 1, height: 44, background: '#1e2125', borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
                       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${c}%`, background: heat(c, 60, 85) }} />
-                      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontFamily: 'monospace', color: '#cfd3d8' }}>{c}</span>
+                      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, fontFamily: 'monospace', color: '#e8eaed' }}>{c}</span>
                     </div>
                   ))}
                 </div>
@@ -144,19 +146,19 @@ export default function SysMonitor() {
             <div style={{ height: 1, background: 'rgba(255,255,255,0.08)' }} />
 
             {row('RAM',
-              s.memUsedMb != null && s.memTotalMb != null ? `${s.memUsedMb} / ${s.memTotalMb} MB · ${s.memPct}%` : '--',
+              s.memUsedMb != null && s.memTotalMb != null ? `${s.memUsedMb}/${s.memTotalMb} · ${s.memPct}%` : '--',
               s.memPct != null ? heat(s.memPct, 75, 90) : undefined)}
-            {row('SWAP (zram)', s.swapUsedMb != null ? `${s.swapUsedMb} MB` : '--',
+            {row('SWAP', s.swapUsedMb != null ? `${s.swapUsedMb} MB` : '--',
               s.swapUsedMb != null && s.swapUsedMb > 80 ? '#ffca28' : undefined)}
-            {row('CPU TEMP', s.tempC != null ? `${s.tempC.toFixed(1)} °C` : '--',
+            {row('TEMP', s.tempC != null ? `${s.tempC.toFixed(1)}°C` : '--',
               s.tempC != null ? heat(s.tempC, 70, 80) : undefined)}
-            {row('LOAD', s.load ? s.load.map((l) => l.toFixed(2)).join('  ') : '--')}
+            {row('LOAD', s.load ? s.load.map((l) => l.toFixed(2)).join(' ') : '--')}
             {row('UPTIME', s.uptime != null ? fmtUptime(s.uptime) : '--')}
-          </>
+          </div>
         )}
 
-        <div style={{ color: '#5b6066', fontSize: 10, textAlign: 'center', marginTop: 2 }}>
-          tap anywhere to close · two-finger hold to reopen
+        <div style={{ color: '#5b6066', fontSize: 12, textAlign: 'center' }}>
+          tap to close · two-finger hold to reopen
         </div>
       </div>
     </div>

@@ -21,12 +21,6 @@ export default function HomeView() {
   const isStreaming       = useStatusStore(s => s.isStreaming)
   const activeGraph       = useStatusStore(s => s.activeGraph)
 
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(id)
-  }, [])
-
   // Auto-switch views: while streaming, always show CarPlay; when a stream
   // ends, drop back to the home/clock view. (Covers app-start-while-streaming.)
   const prevStreaming = useRef(isStreaming)
@@ -39,6 +33,13 @@ export default function HomeView() {
   const onRoot   = pathname === '/'
   // Hide the idle overlay while a metric graph is open so the graph shows.
   const showIdle = onRoot && homeMode && !activeGraph
+
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    if (!showIdle) return
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [showIdle])
 
   // Clock
   let h = now.getHours()
@@ -76,7 +77,10 @@ export default function HomeView() {
           position: 'absolute', top: 0, left: 0,
           width: '100%', height: 'calc(min(100vw, 100vh) * 0.70625)',
           zIndex: 1300, background: '#000', cursor: 'pointer',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          display: showIdle ? 'flex' : 'none',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           paddingBottom: 120,   // nudge the content above true center
           opacity: showIdle ? 1 : 0,
           transform: showIdle ? 'scale(1)' : 'scale(0.82)',

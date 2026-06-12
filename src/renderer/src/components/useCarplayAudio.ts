@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AudioCommand, AudioData, decodeTypeMap } from '../../../main/carplay/messages'
+import { AudioCommand, decodeTypeMap } from '../../../main/carplay/messages/readable'
+import type { AudioData } from '../../../main/carplay/messages/readable'
 import { PcmPlayer } from 'pcm-ringbuf-player'
 import { AudioPlayerKey, CarPlayWorker } from './worker/types'
 import { createAudioPlayerKey } from './worker/utils'

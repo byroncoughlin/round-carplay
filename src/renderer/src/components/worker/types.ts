@@ -1,4 +1,5 @@
-import { DongleConfig, TouchAction } from '../../../../main/carplay/messages'
+import type { DongleConfig } from '../../../../main/carplay/DongleDriver'
+import type { TouchAction } from '../../../../main/carplay/messages/sendable'
 
 export type AudioPlayerKey = string & { __brand: 'AudioPlayerKey' }
 
@@ -65,6 +66,7 @@ export type Command =
   | { type: 'audioPlayer'; payload: AudioPlayerPayload }  
   | { type: 'audioBuffer'; payload: AudioPlayerPayload }
   | { type: 'microphoneInput'; payload: Int16Array }
+  | { type: 'setPcmEnabled'; payload: { enabled: boolean } }
   | { type: 'frame' }
   | { type: 'keyCommand'; command: KeyCommand }
 

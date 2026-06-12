@@ -1,4 +1,4 @@
-import { ExtraConfig } from "../../../main/Globals"
+import type { ExtraConfig } from "../../../main/Globals"
 
 export async function updateCameras(
   setCameraFound: (found: boolean) => void,

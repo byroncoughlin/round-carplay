@@ -21,6 +21,7 @@ export class InitEvent implements WorkerEvent {
     public renderer: Renderer = 'auto',
     public reportFps: boolean = false,
     public useHardware: boolean = false,
-    public useWebRTC: boolean = false
+    public useWebRTC: boolean = false,
+    public forceHardwareDecode: boolean = false
   ) {}
 }

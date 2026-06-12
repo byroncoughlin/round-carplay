@@ -15,10 +15,17 @@ const scope = self as unknown as Worker
 // paint a blurred, scaled-up copy behind the gauges (fills the round display).
 // Heavily downscaled — the blur hides it and it keeps the Pi cheap. Toggled at
 // runtime from the renderer (Settings → BACKDROP) via a 'set-backdrop' message.
-const BACKDROP_INTERVAL_MS = 200   // ~5 fps — ambient fill, cheap on the Pi
-const BACKDROP_WIDTH = 64          // px; height scaled to keep aspect. Tiny on
+const BACKDROP_INTERVAL_MS = 1000  // ~1 fps — color wash, not live video
+const BACKDROP_WIDTH = 32          // px; height scaled to keep aspect. Tiny on
                                    // purpose: the ~16x upscale is most of the blur,
                                    // and the smaller frame is cheaper to resize/draw.
+const MAX_DECODE_QUEUE_FOR_DELTA = 2
+const MAX_DECODE_QUEUE_BEFORE_RESET = 10
+const DECODER_BACKLOG_LOG_MS = 1000
+const MAX_VIDEO_FRAME_AGE_MS = 500
+const STALE_VIDEO_LOG_MS = 1000
+
+type VideoPortMessage = ArrayBuffer | { buffer?: ArrayBuffer; sentAt?: number }
 
 export class RendererWorker {
   private readonly vendorHeaderSize = 20
@@ -32,13 +39,21 @@ export class RendererWorker {
   private isConfigured = false
   private lastSPS: Uint8Array | null = null
   private useHardware = false
+  private forceHardwareDecode = false
   private awaitingValidKeyframe = true
   private hardwareAccelerationTested = false
   private selectedRenderer: string | null = null
   private lastBackdropTime = 0
-  private backdropEnabled = true
+  private backdropEnabled = false
   private backdropCanvas: OffscreenCanvas | null = null
   private backdropCtx: OffscreenCanvasRenderingContext2D | null = null
+  private droppedDecoderFrames = 0
+  private decoderBacklogResets = 0
+  private maxDecodeQueue = 0
+  private lastDecoderBacklogLog = 0
+  private staleVideoDrops = 0
+  private maxStaleVideoAge = 0
+  private lastStaleVideoLog = 0
 
   setBackdrop = (enabled: boolean) => {
     this.backdropEnabled = enabled
@@ -59,13 +74,18 @@ export class RendererWorker {
       this.fps = ++this.frameCount / elapsed
     }
 
+    if (!this.renderer) {
+      frame.close()
+      return
+    }
+
     // Draw the instant a frame decodes — no requestAnimationFrame wait. The
     // compositor samples the latest canvas commit on its own vsync, so pacing
     // here only added latency: frames arrive every ~16.9ms while vsync is
     // 16.7ms, so an aligned draw drifts past the boundary every few frames,
     // waits two vsyncs, and gets overwritten — measured ~49fps shown of 60
     // received, as a rhythmic judder. Immediate draw shows every frame.
-    this.renderer?.draw(frame)
+    this.renderer.draw(frame)
 
     // Ambient backdrop tap — copy from the just-drawn GL canvas (GPU→GPU)
     // instead of converting the software VideoFrame on this thread, which
@@ -97,18 +117,68 @@ export class RendererWorker {
     console.error(`[RENDER.WORKER] Decoder error`, err)
   }
 
+  private reportDecoderBacklog(action: 'drop-delta' | 'reset', queueSize: number, key: boolean) {
+    const now = performance.now()
+    this.maxDecodeQueue = Math.max(this.maxDecodeQueue, queueSize)
+    if (action === 'drop-delta') this.droppedDecoderFrames++
+    else this.decoderBacklogResets++
+
+    if (now - this.lastDecoderBacklogLog < DECODER_BACKLOG_LOG_MS) return
+
+    scope.postMessage({
+      type: 'render-diagnostics',
+      message: 'decoder-backlog',
+      data: {
+        action,
+        queueSize,
+        maxQueue: this.maxDecodeQueue,
+        droppedDeltaFrames: this.droppedDecoderFrames,
+        resets: this.decoderBacklogResets,
+        key
+      }
+    })
+    this.lastDecoderBacklogLog = now
+    this.droppedDecoderFrames = 0
+    this.decoderBacklogResets = 0
+    this.maxDecodeQueue = 0
+  }
+
+  private reportStaleVideoDrop(ageMs: number) {
+    const now = performance.now()
+    this.staleVideoDrops++
+    this.maxStaleVideoAge = Math.max(this.maxStaleVideoAge, ageMs)
+
+    if (now - this.lastStaleVideoLog < STALE_VIDEO_LOG_MS) return
+
+    scope.postMessage({
+      type: 'render-diagnostics',
+      message: 'stale-video-drop',
+      data: {
+        dropped: this.staleVideoDrops,
+        ageMs,
+        maxAgeMs: this.maxStaleVideoAge
+      }
+    })
+    this.lastStaleVideoLog = now
+    this.staleVideoDrops = 0
+    this.maxStaleVideoAge = 0
+  }
+
   init = async (event: InitEvent & { platform?: string }) => {
     this.useHardware = event.useHardware
+    this.forceHardwareDecode = event.forceHardwareDecode === true
     this.canvas = event.canvas
 
     this.videoPort = event.videoPort
-    this.videoPort.onmessage = (ev: MessageEvent<ArrayBuffer>) => {
-      this.processRaw(ev.data)
+    this.videoPort.onmessage = (ev: MessageEvent<VideoPortMessage>) => {
+      const data = ev.data
+      if (data instanceof ArrayBuffer) {
+        this.processRaw(data)
+      } else if (data?.buffer instanceof ArrayBuffer) {
+        this.processRaw(data.buffer, data.sentAt)
+      }
     }
     this.videoPort.start()
-
-    self.postMessage({ type: 'render-ready' })
-    console.debug('[RENDER.WORKER] render-ready')
 
     if (event.reportFps) {
       setInterval(() => {
@@ -130,7 +200,11 @@ export class RendererWorker {
 
     if (!this.renderer) {
       console.warn('[RENDER.WORKER] No valid renderer selected, cannot proceed.')
+      return
     }
+
+    self.postMessage({ type: 'render-ready' })
+    console.debug('[RENDER.WORKER] render-ready')
   }
 
   private async evaluateRendererCapabilities() {
@@ -153,8 +227,14 @@ export class RendererWorker {
       )
     }
 
-    // Linux: sw -> hw & Darwin: hw -> sw
-    const selectOrder: ('hw' | 'sw')[] = isLinux ? ['sw', 'hw'] : ['hw', 'sw']
+    // Normal Linux path stays software-first because that has been stable on
+    // the Pi. The diagnostic flag lets us force a hardware-first A/B while
+    // still falling back if the browser rejects hardware decode.
+    const selectOrder: ('hw' | 'sw')[] = this.forceHardwareDecode
+      ? ['hw', 'sw']
+      : isLinux
+        ? ['sw', 'hw']
+        : ['hw', 'sw']
 
     for (const mode of selectOrder) {
       for (const r of rendererPriority) {
@@ -167,12 +247,36 @@ export class RendererWorker {
             `[RENDER.WORKER] Selected renderer: ${r} (` +
               `${mode === 'hw' ? 'hardware' : 'software'})`
           )
+          scope.postMessage({
+            type: 'render-diagnostics',
+            message: 'decoder-selection',
+            data: {
+              renderer: r,
+              decodeMode: mode === 'hw' ? 'hardware' : 'software',
+              forceHardwareDecode: this.forceHardwareDecode,
+              platform,
+              isLinux,
+              caps: results
+            }
+          })
           return
         }
       }
     }
 
     console.warn('[RENDER.WORKER] No suitable renderer found')
+    scope.postMessage({
+      type: 'render-diagnostics',
+      message: 'decoder-selection',
+      data: {
+        renderer: null,
+        decodeMode: null,
+        forceHardwareDecode: this.forceHardwareDecode,
+        platform,
+        isLinux,
+        caps: results
+      }
+    })
   }
 
   private async isRendererSupported(
@@ -240,10 +344,32 @@ export class RendererWorker {
     try {
       console.debug('[RENDER.WORKER] Configuring decoder with:', cfg)
       this.decoder.configure(cfg)
+      scope.postMessage({
+        type: 'render-diagnostics',
+        message: 'decoder-config',
+        data: {
+          codec: cfg.codec,
+          hardwareAcceleration: cfg.hardwareAcceleration,
+          optimizeForLatency: cfg.optimizeForLatency,
+          forceHardwareDecode: this.forceHardwareDecode,
+          renderer: this.selectedRenderer
+        }
+      })
       this.isConfigured = true
       return true
     } catch (err) {
       console.warn(`[RENDER.WORKER] Config ${accel} error`, err)
+      scope.postMessage({
+        type: 'render-diagnostics',
+        message: 'decoder-config-error',
+        data: {
+          codec: cfg.codec,
+          hardwareAcceleration: cfg.hardwareAcceleration,
+          forceHardwareDecode: this.forceHardwareDecode,
+          renderer: this.selectedRenderer,
+          error: String(err)
+        }
+      })
       return false
     }
   }
@@ -270,8 +396,16 @@ export class RendererWorker {
     return false
   }
 
-  private async processRaw(buffer: ArrayBuffer) {
+  private async processRaw(buffer: ArrayBuffer, sentAt?: number) {
     if (!buffer.byteLength) return
+
+    if (typeof sentAt === 'number' && Number.isFinite(sentAt)) {
+      const ageMs = Date.now() - sentAt
+      if (ageMs > MAX_VIDEO_FRAME_AGE_MS) {
+        this.reportStaleVideoDrop(ageMs)
+        return
+      }
+    }
 
     const data = new Uint8Array(buffer)
     const videoData =
@@ -280,13 +414,26 @@ export class RendererWorker {
     const key = RendererWorker.isKeyFrameFast(videoData)
     const now = performance.now()
 
-    if (!this.isConfigured) {
-      // only hunt for an SPS while we still need one to configure the decoder
+    if (!this.isConfigured || key) {
+      // Only hunt for SPS while configuring or on keyframes. The keyframe path
+      // lets a backlog reset recover with the freshest stream config.
       const sps = getNaluFromStream(videoData, NaluTypes.SPS)
       if (sps) {
         console.debug('[RENDER.WORKER] SPS detected, length:', sps.rawNalu?.length)
         this.lastSPS = sps.rawNalu
       }
+    }
+
+    const queueSize = this.decoder.decodeQueueSize
+    if (this.isConfigured && queueSize >= MAX_DECODE_QUEUE_BEFORE_RESET) {
+      this.reportDecoderBacklog('reset', queueSize, key)
+      try {
+        this.decoder.reset()
+      } catch (e) {
+        console.warn('[RENDER.WORKER] Decoder reset after backlog failed', e)
+      }
+      this.isConfigured = false
+      this.awaitingValidKeyframe = true
     }
 
     if (this.awaitingValidKeyframe && !key) {
@@ -316,6 +463,11 @@ export class RendererWorker {
     }
 
     if (!this.isConfigured || this.awaitingValidKeyframe) return
+
+    if (!key && this.decoder.decodeQueueSize > MAX_DECODE_QUEUE_FOR_DELTA) {
+      this.reportDecoderBacklog('drop-delta', this.decoder.decodeQueueSize, key)
+      return
+    }
 
     const chunk = new EncodedVideoChunk({
       type: key ? 'key' : 'delta',

@@ -1,12 +1,15 @@
 import { app, shell, BrowserWindow, session, ipcMain, protocol } from 'electron'
 import { join, extname } from 'path'
+import { monitorEventLoopDelay } from 'perf_hooks'
 import { existsSync, createReadStream, readFileSync, writeFileSync } from 'fs'
 import { electronApp, is } from '@electron-toolkit/utils'
 import { DEFAULT_CONFIG } from '@carplay/node'
+import { PhoneType } from '@carplay/messages'
 import { Socket } from './Socket'
 import { ExtraConfig, KeyBindings } from './Globals'
 import { USBService } from './usb/USBService'
 import { CarplayService } from './carplay/CarplayService'
+import { diagLog } from './diagnosticsLog'
 
 // --- On-demand system stats for the hidden Pi monitor ------------------------
 // Read straight from /proc + sysfs when the renderer asks. Nothing runs unless
@@ -54,6 +57,35 @@ async function readSystemStats(): Promise<Record<string, unknown>> {
     swapUsedMb: swapUsed != null ? Math.round(swapUsed / 1024) : null,
     tempC, load, uptime,
   }
+}
+
+let mainLoopDiagnosticsTimer: NodeJS.Timeout | null = null
+
+const roundMs = (ns: number): number => Math.round((Number(ns) / 1_000_000) * 10) / 10
+
+function startMainLoopDiagnostics(): void {
+  if (mainLoopDiagnosticsTimer) return
+
+  const loop = monitorEventLoopDelay({ resolution: 10 })
+  loop.enable()
+  let lastPeriodicLog = 0
+
+  mainLoopDiagnosticsTimer = setInterval(() => {
+    const now = Date.now()
+    const maxMs = roundMs(loop.max)
+    const p95Ms = roundMs(loop.percentile(95))
+    const p99Ms = roundMs(loop.percentile(99))
+    const meanMs = Number.isFinite(loop.mean) ? roundMs(loop.mean) : 0
+    const shouldLog = maxMs >= 100 || p99Ms >= 50 || now - lastPeriodicLog >= 5000
+
+    if (shouldLog) {
+      lastPeriodicLog = now
+      diagLog('main-loop', 'delay', { meanMs, p95Ms, p99Ms, maxMs })
+    }
+
+    loop.reset()
+  }, 1000)
+  mainLoopDiagnosticsTimer.unref?.()
 }
 
 // Important: On Linux, enabling VA-API flags breaks WebCodecs’ hardware fallback path.
@@ -190,6 +222,7 @@ function loadConfig(): ExtraConfig {
   if (existsSync(configPath)) {
     fileConfig = JSON.parse(readFileSync(configPath, 'utf8'))
   }
+  const savedCarPlayFrameInterval = fileConfig.phoneConfig?.[PhoneType.CarPlay]?.frameInterval
 
   const merged: ExtraConfig = {
     ...DEFAULT_CONFIG,
@@ -201,9 +234,32 @@ function loadConfig(): ExtraConfig {
     navVolume: 0.5,
     leanOffset: 0,
     pitchOffset: 0,
+    backdropEnabled: false,
+    ambientFillEnabled: false,
+    ambientFillColor: '#142321',
+    diagnosticPlainCarplay: false,
+    diagnosticRoundedCarplayClip: false,
+    diagnosticHardwareDecode: false,
+    pointerCaptureTouch: true,
+    diagnosticPointerCaptureTouch: false,
+    diagnosticTouchFrameKick: false,
     bindings: { ...DEFAULT_BINDINGS },
     ...fileConfig
   } as ExtraConfig
+
+  merged.kiosk = true
+  merged.nightMode = true
+  merged.audioTransferMode = true
+  merged.micType = 'os'
+  merged.microphone = ''
+
+  merged.phoneConfig = {
+    ...DEFAULT_CONFIG.phoneConfig,
+    ...(fileConfig.phoneConfig || {})
+  }
+  if (savedCarPlayFrameInterval === 100) {
+    merged.phoneConfig[PhoneType.CarPlay] = DEFAULT_CONFIG.phoneConfig[PhoneType.CarPlay]
+  }
 
   merged.bindings = {
     ...DEFAULT_BINDINGS,
@@ -333,6 +389,7 @@ function createWindow(): void {
 // App‑Lifecycle
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron.carplay')
+  startMainLoopDiagnostics()
 
   protocol.registerStreamProtocol('app', (request, cb) => {
     try {
@@ -361,6 +418,15 @@ app.whenReady().then(() => {
   socket = new Socket(config, saveSettings)
 
   ipcMain.handle('quit', () => (process.platform === 'darwin' ? mainWindow?.hide() : app.quit()))
+  ipcMain.handle('getSettings', () => config)
+  ipcMain.handle('save-settings', (_event, settings: ExtraConfig) => {
+    saveSettings(settings)
+    return true
+  })
+  ipcMain.on('renderer-diagnostics', (_event, payload: { message?: unknown; data?: unknown }) => {
+    const message = typeof payload?.message === 'string' ? payload.message.slice(0, 80) : 'event'
+    diagLog('renderer', message, payload?.data)
+  })
   ipcMain.handle('system-stats', async () => {
     try { return await readSystemStats() } catch (e) { return { error: String(e) } }
   })
@@ -378,37 +444,58 @@ app.on('window-all-closed', () => {
 
 // Settings IPC
 function saveSettings(settings: ExtraConfig) {
+  const normalized = {
+    ...settings,
+    kiosk: true,
+    nightMode: true,
+    audioTransferMode: true,
+    micType: 'os',
+    microphone: '',
+    width: +settings.width,
+    height: +settings.height,
+    fps: +settings.fps,
+    dpi: +settings.dpi,
+    format: +settings.format,
+    iBoxVersion: +settings.iBoxVersion,
+    phoneWorkMode: +settings.phoneWorkMode,
+    packetMax: +settings.packetMax,
+    mediaDelay: +settings.mediaDelay
+  } as ExtraConfig
+
+  diagLog('settings', 'save', {
+    width: normalized.width,
+    height: normalized.height,
+    fps: normalized.fps,
+    dpi: normalized.dpi,
+    backdropEnabled: normalized.backdropEnabled,
+    ambientFillEnabled: normalized.ambientFillEnabled,
+    diagnosticPlainCarplay: normalized.diagnosticPlainCarplay,
+    diagnosticRoundedCarplayClip: normalized.diagnosticRoundedCarplayClip,
+    diagnosticHardwareDecode: normalized.diagnosticHardwareDecode,
+    pointerCaptureTouch: normalized.pointerCaptureTouch,
+    diagnosticPointerCaptureTouch: normalized.diagnosticPointerCaptureTouch,
+    diagnosticTouchFrameKick: normalized.diagnosticTouchFrameKick,
+    wifiType: normalized.wifiType,
+    audioTransferMode: normalized.audioTransferMode
+  })
+
   writeFileSync(
     configPath,
-    JSON.stringify(
-      {
-        ...settings,
-        width: +settings.width,
-        height: +settings.height,
-        fps: +settings.fps,
-        dpi: +settings.dpi,
-        format: +settings.format,
-        iBoxVersion: +settings.iBoxVersion,
-        phoneWorkMode: +settings.phoneWorkMode,
-        packetMax: +settings.packetMax,
-        mediaDelay: +settings.mediaDelay
-      },
-      null,
-      2
-    )
+    JSON.stringify(normalized, null, 2)
   )
 
-  socket.config = settings
+  config = normalized
+  socket.config = normalized
   socket.sendSettings()
 
   if (!mainWindow) return
 
-  if (settings.kiosk) {
+  if (normalized.kiosk) {
     mainWindow.setKiosk(true)
     applyAspectRatio(mainWindow, 0, 0)
   } else {
     mainWindow.setKiosk(false)
-    mainWindow.setContentSize(settings.width, settings.height, false)
-    applyAspectRatio(mainWindow, settings.width, settings.height)
+    mainWindow.setContentSize(normalized.width, normalized.height, false)
+    applyAspectRatio(mainWindow, normalized.width, normalized.height)
   }
 }

@@ -1,20 +1,27 @@
-import { decodeTypeMap } from '../../../../main/carplay/messages'
+import { decodeTypeMap } from '../../../../main/carplay/messages/readable'
 import { AudioPlayerKey } from './types'
 import { RingBuffer } from 'ringbuf.js'
 import { createAudioPlayerKey } from './utils'
 
 const audioBuffers: Record<AudioPlayerKey, RingBuffer> = {}
 const pendingAudio: Record<AudioPlayerKey, Int16Array[]> = {}
+const MAX_PENDING_AUDIO_BUFFERS = 12
 
 let microphonePort: MessagePort | undefined
 
 let isNewStream = true
 let lastPcmTimestamp = Date.now()
+let pcmEnabled = false
 const PCM_TIMEOUT = 2000
 
 function processAudioData(audioData: any) {
   const { decodeType, audioType } = audioData;
   const meta = decodeTypeMap[decodeType];
+  if (!meta) {
+    console.warn('[CARPLAY.WORKER] Dropping audio with unknown decodeType:', decodeType)
+    return
+  }
+
   let int16: Int16Array;
 
   if (audioData.data instanceof Int16Array) {
@@ -33,7 +40,7 @@ function processAudioData(audioData: any) {
     isNewStream = true; 
   }
 
-  if (isNewStream && meta) {
+  if (isNewStream) {
     isNewStream = false;
 
     const newAudioInfo = {
@@ -49,8 +56,10 @@ function processAudioData(audioData: any) {
     });
   }
 
-  // PCM FFT/Mono
-  if (meta) {
+  // PCM FFT/Mono is only needed by the Info screen's spectrum view. Keep it
+  // off during normal CarPlay so audio chunks do not generate extra worker
+  // CPU, main-thread messages, and Zustand updates.
+  if (pcmEnabled) {
     const channels = Math.max(1, meta.channel ?? 2);
     const frames = Math.floor(int16.length / channels);
     const float32 = new Float32Array(frames);
@@ -74,6 +83,9 @@ function processAudioData(audioData: any) {
   } else {
     pendingAudio[key] = pendingAudio[key] || [];
     pendingAudio[key].push(int16);
+    while (pendingAudio[key].length > MAX_PENDING_AUDIO_BUFFERS) {
+      pendingAudio[key].shift()
+    }
     self.postMessage({ type: 'requestBuffer', message: { decodeType, audioType } });
   }
 
@@ -127,6 +139,9 @@ self.onmessage = ev => {
     }
     case 'stop':
       isNewStream = true;
+      break
+    case 'setPcmEnabled':
+      pcmEnabled = data.payload?.enabled === true
       break
     default:
       break

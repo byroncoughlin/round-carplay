@@ -35,12 +35,13 @@ export default function Info() {
   useEffect(() => {
     if (isDongleConnected) {
       window.carplay.usb.getDeviceInfo().then(info => {
-       if (info.device) {
+        if (info?.device) {
+          const current = useCarplayStore.getState()
           useCarplayStore.setState({
-            serial: info.serialNumber,
-            manufacturer: info.manufacturerName,
-            product: info.productName,
-            fwVersion: info.fwVersion,
+            serial: info.serialNumber || current.serial,
+            manufacturer: info.manufacturerName || current.manufacturer,
+            product: info.productName || current.product,
+            fwVersion: info.fwVersion || current.fwVersion
           })
         }
       })

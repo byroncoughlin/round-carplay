@@ -1,4 +1,4 @@
-import { decodeTypeMap } from '../../../../main/carplay/messages'
+import { decodeTypeMap } from '../../../../main/carplay/messages/readable'
 import { AudioPlayerKey } from './types'
 
 export const createAudioPlayerKey = (decodeType: number, audioType: number) => {

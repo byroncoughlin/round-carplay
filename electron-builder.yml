@@ -38,7 +38,13 @@ dmg:
 appImage:
   artifactName: ${name}-${version}-${arch}.${ext}
 
-npmRebuild: true
+# Cross-building the Linux arm64 AppImage from a macOS host: do NOT rebuild
+# native modules for the host. `usb` ships a valid linux-arm64 prebuilt
+# (node_modules/usb/prebuilds/linux-arm64/node.napi.armv8.node, an ELF aarch64
+# binary) and node-gyp-build selects it at runtime on the Pi. Rebuilding here
+# would produce a macOS Mach-O .node in build/Release that gets packaged and
+# fails on the Pi with "invalid ELF header".
+npmRebuild: false
 
 publish:
   provider: generic

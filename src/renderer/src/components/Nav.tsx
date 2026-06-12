@@ -31,12 +31,11 @@ function AirheadIcon() {
   )
 }
 import HelpCenterIcon from '@mui/icons-material/HelpCenter'
-import CameraIcon from '@mui/icons-material/Camera'
 import CloseIcon from '@mui/icons-material/Close'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useStatusStore } from '../store/store'
 import { useTheme } from '@mui/material/styles'
-import { ExtraConfig } from '../../../main/Globals'
+import type { ExtraConfig } from '../../../main/Globals'
 
 interface NavProps {
   settings: ExtraConfig | null
@@ -49,7 +48,6 @@ export default function Nav({ receivingVideo }: NavProps) {
 
   const isDongleConnected = useStatusStore(s => s.isDongleConnected)
   const isStreaming       = useStatusStore(s => s.isStreaming)
-  const cameraFound       = useStatusStore(s => s.cameraFound)
   const [confirmQuit, setConfirmQuit] = useState(false)
   const navigate = useNavigate()
   // Close (✕) tab: short tap closes the current view (back to the dashboard);
@@ -67,7 +65,6 @@ export default function Nav({ receivingVideo }: NavProps) {
     '/':         0,
     '/settings': 1,
     '/info':     2,
-    '/camera':   3,
   }
   const value = routeToIndex[pathname] ?? 0
 
@@ -120,19 +117,6 @@ export default function Nav({ receivingVideo }: NavProps) {
         />
         <Tab icon={<TuneIcon />}       component={Link} to="/settings" />
         <Tab icon={<HelpCenterIcon />} component={Link} to="/info" />
-        <Tab
-          icon={<CameraIcon />}
-          component={Link}
-          to="/camera"
-          disabled={!cameraFound}
-          sx={{
-            '& svg': {
-              color: cameraFound
-                ? theme.palette.common.white
-                : theme.palette.text.disabled
-            }
-          }}
-        />
         <Tab
           icon={<CloseIcon />}
           onPointerDown={closeHoldStart}

@@ -1,27 +1,23 @@
-<<<<<<< HEAD
 #directories
 bower_components
 node_modules
 dist
 build
+out
 .idea
 
 #files
 *.tgz
 *.log
+*.log*
 *.apk
 .idea/workspace.xml
 *.xml
+*.pyc
+__pycache__/
 
 # Hide OS X stuff
 .DS_Store
-
-=======
-node_modules
-dist
-out
-*.log*
->>>>>>> origin/v4
 
 # web demo build output
 web-dist

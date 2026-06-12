@@ -1,4 +1,4 @@
-import { DongleConfig } from '../DongleDriver.js'
+import type { DongleConfig } from '../DongleDriver.js'
 import {
   MessageType,
   MessageHeader,
@@ -142,7 +142,8 @@ export class SendAudio extends SendableMessageWithPayload {
     audioData.writeUInt32LE(5, 0)
     audioData.writeFloatLE(0.0, 4)
     audioData.writeUInt32LE(3, 8)
-    return Buffer.concat([audioData, Buffer.from(this.data.buffer)])
+    const pcm = Buffer.from(this.data.buffer, this.data.byteOffset, this.data.byteLength)
+    return Buffer.concat([audioData, pcm])
   }
 
   constructor(data: Int16Array) {

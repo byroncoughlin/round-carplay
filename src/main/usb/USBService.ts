@@ -3,6 +3,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { CarplayService } from '../carplay/CarplayService'
 import { findDongle } from './helpers'
 import NodeMicrophone from '../carplay/node/NodeMicrophone'
+import { diagLog } from '../diagnosticsLog'
 
 import * as usbModule from 'usb'
 const { usb, getDeviceList } = usbModule
@@ -10,10 +11,12 @@ const { usb, getDeviceList } = usbModule
 export class USBService {
   private lastDongleState: boolean = false
   private stopped = false
+  private resetReconcileTimers: ReturnType<typeof setTimeout>[] = []
 
   public async stop(): Promise<void> {
     if (this.stopped) return
     this.stopped = true
+    this.clearResetReconcileTimers()
     usb.removeAllListeners('attach')
     usb.removeAllListeners('detach')
     usb.unrefHotplugEvents()
@@ -28,9 +31,13 @@ export class USBService {
     const device = getDeviceList().find(this.isDongle)
     if (device) {
       console.log('[USBService] Dongle was already connected on startup', device)
+      diagLog('usb', 'dongle-present-at-startup', {
+        vendorId: device.deviceDescriptor.idVendor,
+        productId: device.deviceDescriptor.idProduct
+      })
       this.lastDongleState = true
       this.carplay.markDongleConnected(true)
-      this.carplay.autoStartIfNeeded().catch(console.error)
+      this.carplay.scheduleAutoStartIfNeeded(1500)
       this.notifyDeviceChange(device, true)
     }
   }
@@ -40,9 +47,13 @@ export class USBService {
       this.broadcastGenericUsbEvent({ type: 'attach', device })
       if (this.isDongle(device) && !this.lastDongleState) {
         console.log('[USBService] Dongle connected:', device)
+        diagLog('usb', 'dongle-attach', {
+          vendorId: device.deviceDescriptor.idVendor,
+          productId: device.deviceDescriptor.idProduct
+        })
         this.lastDongleState = true
         this.carplay.markDongleConnected(true)
-        this.carplay.autoStartIfNeeded().catch(console.error)
+        this.carplay.scheduleAutoStartIfNeeded(1000)
         this.notifyDeviceChange(device, true)
       }
     })
@@ -51,9 +62,16 @@ export class USBService {
       this.broadcastGenericUsbEvent({ type: 'detach', device })
       if (this.isDongle(device) && this.lastDongleState) {
         console.log('[USBService] Dongle disconnected:', device)
+        diagLog('usb', 'dongle-detach', {
+          vendorId: device.deviceDescriptor.idVendor,
+          productId: device.deviceDescriptor.idProduct
+        })
         this.lastDongleState = false
         this.carplay.markDongleConnected(false)
         this.notifyDeviceChange(device, false)
+        this.carplay.stop().catch((err) =>
+          console.warn('[USBService] Failed to stop CarPlay after dongle detach', err)
+        )
       }
     })
   }
@@ -141,6 +159,22 @@ export class USBService {
           .toString()
           .padStart(2, '0')}`
       : 'Unknown'
+    const vendorId = device.deviceDescriptor.idVendor
+    const productId = device.deviceDescriptor.idProduct
+
+    if (this.carplay.isActive()) {
+      diagLog('usb', 'device-info-skipped-active-carplay', { vendorId, productId })
+      return {
+        device: true,
+        vendorId,
+        productId,
+        serialNumber: '',
+        manufacturerName: '',
+        productName: '',
+        fwVersion,
+        busy: true
+      }
+    }
 
     let serialNumber = ''
     let manufacturerName = ''
@@ -166,8 +200,8 @@ export class USBService {
 
     return {
       device: true,
-      vendorId: device.deviceDescriptor.idVendor,
-      productId: device.deviceDescriptor.idProduct,
+      vendorId,
+      productId,
       serialNumber,
       manufacturerName,
       productName,
@@ -202,7 +236,15 @@ export class USBService {
     this.notifyReset('usb-reset-start', true)
     const dongle = findDongle()
     if (dongle) {
+      try {
+        console.log('[USB] Force reset: stopping CarPlay...')
+        await this.carplay.stop()
+        await new Promise((resolve) => setTimeout(resolve, 300))
+      } catch (e) {
+        console.warn('[USB] Failed to stop CarPlay before force reset:', e)
+      }
       this.lastDongleState = false
+      this.carplay.markDongleConnected(false)
       this.broadcastGenericUsbEvent({ type: 'detach', device: dongle })
       this.notifyDeviceChange(dongle, false)
     }
@@ -227,6 +269,7 @@ export class USBService {
       await this.carplay.stop()
       await new Promise((resolve) => setTimeout(resolve, 300))
       this.lastDongleState = false
+      this.carplay.markDongleConnected(false)
       this.broadcastGenericUsbEvent({ type: 'detach', device: dongle })
       this.notifyDeviceChange(dongle, false)
       return await this.resetDongle(dongle)
@@ -274,6 +317,7 @@ export class USBService {
         })
       })
 
+      this.schedulePostResetReconcile()
       return true
     } catch (e) {
       console.error('[USB] Exception during resetDongle()', e)
@@ -286,5 +330,42 @@ export class USBService {
         console.warn('[USB] Failed to close dongle after reset:', e)
       }
     }
+  }
+
+  private clearResetReconcileTimers(): void {
+    this.resetReconcileTimers.forEach((timer) => clearTimeout(timer))
+    this.resetReconcileTimers = []
+  }
+
+  private schedulePostResetReconcile(): void {
+    this.clearResetReconcileTimers()
+    for (const delayMs of [750, 2000, 4000]) {
+      const timer = setTimeout(() => {
+        this.resetReconcileTimers = this.resetReconcileTimers.filter((t) => t !== timer)
+        this.reconcileDongleAfterReset(delayMs).catch((err) =>
+          console.warn('[USB] post-reset dongle reconcile failed:', err)
+        )
+      }, delayMs)
+      this.resetReconcileTimers.push(timer)
+    }
+  }
+
+  private async reconcileDongleAfterReset(delayMs: number): Promise<void> {
+    if (this.stopped || this.lastDongleState) return
+    const dongle = findDongle()
+    if (!dongle) return
+
+    console.log('[USB] Dongle present after reset; reconciling missed attach event')
+    diagLog('usb', 'post-reset-reconcile', {
+      delayMs,
+      vendorId: dongle.deviceDescriptor.idVendor,
+      productId: dongle.deviceDescriptor.idProduct
+    })
+    this.lastDongleState = true
+    this.carplay.markDongleConnected(true)
+    this.broadcastGenericUsbEvent({ type: 'attach', device: dongle })
+    this.notifyDeviceChange(dongle, true)
+    this.carplay.scheduleAutoStartIfNeeded(1000)
+    this.clearResetReconcileTimers()
   }
 }

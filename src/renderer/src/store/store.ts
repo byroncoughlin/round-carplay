@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { ExtraConfig } from '../../../main/Globals'
+import type { ExtraConfig } from '../../../main/Globals'
 import { io } from 'socket.io-client'
 import { useDataLog } from './dataLog'
 import type { MetricKey } from './dataLog'
@@ -53,7 +53,7 @@ socket.on('connect_error', (err) => {
 export interface CarplayStore {
   // App-Einstellungen
   settings: ExtraConfig | null
-  saveSettings: (settings: ExtraConfig) => void
+  saveSettings: (settings: ExtraConfig) => Promise<void>
   getSettings: () => void
   stream: (stream: any) => void
   resetInfo: () => void
@@ -138,9 +138,18 @@ export const useCarplayStore = create<CarplayStore>((set) => ({
   chtPeak: { left: 0, right: 0 },
   resetImuPeak: () => set({ imuPeak: { leanL: 0, leanR: 0, g: 0 } }),
   resetChtPeak: () => set({ chtPeak: { left: 0, right: 0 } }),
-  saveSettings: (settings) => {
+  saveSettings: async (settings) => {
     set({ settings })
-    socket.emit('saveSettings', settings)
+    if (typeof window.carplay?.settings?.save === 'function') {
+      try {
+        await window.carplay.settings.save(settings)
+      } catch (err) {
+        console.warn('IPC settings save failed, falling back to socket:', err)
+        socket.emit('saveSettings', settings)
+      }
+    } else {
+      socket.emit('saveSettings', settings)
+    }
   },
   getSettings: () => {
     socket.emit('getSettings')

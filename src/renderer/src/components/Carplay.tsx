@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { CommandMapping } from '../../../main/carplay/messages/common'
 
-import { ExtraConfig } from '../../../main/Globals'
+import type { ExtraConfig } from '../../../main/Globals'
 import { useCarplayStore, useStatusStore } from '../store/store'
 import { useBackdrop } from '../store/backdrop'
 import { InitEvent, Renderer } from './worker/render/RenderEvents'
@@ -10,7 +10,99 @@ import useCarplayAudio from './useCarplayAudio'
 import { useCarplayTouch } from './useCarplayTouch'
 import type { CarPlayWorker, KeyCommand } from './worker/types'
 
-const RETRY_DELAY_MS = 3000
+type ChunkPacket = {
+  id?: string
+  offset?: number
+  total?: number
+  sentAt?: number
+  isLast?: boolean
+  chunk?: ArrayBuffer | ArrayBufferView
+  [key: string]: any
+}
+
+type PendingChunk = {
+  buffer: Uint8Array
+  received: number
+  createdAt: number
+}
+
+const VIDEO_CHUNK_TTL_MS = 2000
+const MAX_PENDING_VIDEO_PACKETS = 4
+
+const prunePendingVideoChunks = (
+  pending: Map<string, PendingChunk>,
+  now = Date.now()
+) => {
+  for (const [id, state] of pending) {
+    if (now - state.createdAt > VIDEO_CHUNK_TTL_MS) pending.delete(id)
+  }
+
+  while (pending.size > MAX_PENDING_VIDEO_PACKETS) {
+    const oldest = pending.keys().next().value
+    if (!oldest) break
+    pending.delete(oldest)
+  }
+}
+
+const chunkBytes = (chunk: ChunkPacket['chunk']): Uint8Array | null => {
+  if (!chunk) return null
+  if (chunk instanceof ArrayBuffer) return new Uint8Array(chunk)
+  if (ArrayBuffer.isView(chunk)) {
+    return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+  }
+  return null
+}
+
+const chunkTransferBuffer = (chunk: ChunkPacket['chunk']): ArrayBuffer | null => {
+  if (!chunk) return null
+  if (chunk instanceof ArrayBuffer) return chunk
+  if (!ArrayBuffer.isView(chunk)) return null
+  if (chunk.byteOffset === 0 && chunk.byteLength === chunk.buffer.byteLength) {
+    return chunk.buffer as ArrayBuffer
+  }
+  return chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength) as ArrayBuffer
+}
+
+const reassembleVideoPacket = (
+  packet: ChunkPacket,
+  pending: Map<string, PendingChunk>
+): ChunkPacket | null => {
+  const bytes = chunkBytes(packet.chunk)
+  if (!bytes) return null
+
+  const now = Date.now()
+  prunePendingVideoChunks(pending, now)
+
+  const total = Number(packet.total ?? bytes.byteLength)
+  const offset = Number(packet.offset ?? 0)
+  const id = packet.id
+
+  if (!id || !Number.isFinite(total) || total <= bytes.byteLength) return packet
+  if (!Number.isFinite(offset) || offset < 0 || offset + bytes.byteLength > total) {
+    if (id) pending.delete(id)
+    return null
+  }
+
+  let state = pending.get(id)
+  if (!state || state.buffer.byteLength !== total) {
+    state = { buffer: new Uint8Array(total), received: 0, createdAt: now }
+    pending.set(id, state)
+  }
+
+  state.buffer.set(bytes, offset)
+  state.received += bytes.byteLength
+
+  if (!packet.isLast || state.received < total) return null
+
+  pending.delete(id)
+  return {
+    ...packet,
+    offset: 0,
+    total,
+    isLast: true,
+    chunk: state.buffer
+  }
+}
 
 interface CarplayProps {
   receivingVideo: boolean
@@ -30,6 +122,11 @@ const Carplay: React.FC<CarplayProps> = ({
   const navigate = useNavigate()
   const location = useLocation()
   const pathname = location.pathname
+  const plainMode = settings.diagnosticPlainCarplay === true
+  const roundedClipMode = settings.diagnosticRoundedCarplayClip === true
+  const forceHardwareDecode = settings.diagnosticHardwareDecode === true
+  const pointerCaptureTouch =
+    settings.pointerCaptureTouch !== false || settings.diagnosticPointerCaptureTouch === true
 
   // Zustand Store
   const isStreaming = useStatusStore((s) => s.isStreaming)
@@ -50,8 +147,8 @@ const Carplay: React.FC<CarplayProps> = ({
   // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mainElem = useRef<HTMLDivElement>(null)
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const hasStartedRef = useRef(false)
+  const pendingVideoChunksRef = useRef(new Map<string, PendingChunk>())
   const [renderReady, setRenderReady] = useState(false)
 
   // MediaPlayStatus Handling
@@ -104,6 +201,13 @@ const Carplay: React.FC<CarplayProps> = ({
     return w
   }, [micChannel])
 
+  useEffect(() => {
+    carplayWorker.postMessage({
+      type: 'setPcmEnabled',
+      payload: { enabled: !plainMode && pathname === '/info' }
+    })
+  }, [carplayWorker, pathname, plainMode])
+
   // Render Worker Setup
   useEffect(() => {
     if (canvasRef.current && !offscreenCanvasRef.current && !renderWorkerRef.current) {
@@ -119,7 +223,8 @@ const Carplay: React.FC<CarplayProps> = ({
           preferredRenderer as Renderer,
           reportFps,
           useHardware,
-          useWebRTC
+          useWebRTC,
+          forceHardwareDecode
         ),
         [offscreenCanvasRef.current, videoChannel.port2]
       )
@@ -140,80 +245,84 @@ const Carplay: React.FC<CarplayProps> = ({
         setRenderReady(true)
       } else if (ev.data?.type === 'backdrop-frame') {
         useBackdrop.getState().setFrame(ev.data.bitmap as ImageBitmap)
+      } else if (ev.data?.type === 'render-diagnostics') {
+        window.carplay.diagnostics?.log(ev.data.message ?? 'render-worker', ev.data.data)
       }
     }
     renderWorkerRef.current.addEventListener('message', handler)
     return () => renderWorkerRef.current?.removeEventListener('message', handler)
   }, [])
 
-  // Enable/disable the ambient backdrop frame tap from the BACKDROP setting
-  // (default on). Re-sent whenever the worker (re)becomes ready or the setting
-  // changes, so the worker stops sampling frames when the backdrop is off.
+  // Enable the ambient backdrop frame tap only while the backdrop is actually
+  // visible. The setting alone is not enough: settings/idle/plain routes should
+  // not sample live frames in the worker.
   useEffect(() => {
     if (!renderReady) return
+    const enabled =
+      !plainMode &&
+      pathname === '/' &&
+      isStreaming &&
+      !homeMode &&
+      settings.backdropEnabled === true
     renderWorkerRef.current?.postMessage({
       type: 'set-backdrop',
-      enabled: settings.backdropEnabled !== false,
+      enabled,
     })
-  }, [renderReady, settings.backdropEnabled])
+    if (!enabled) useBackdrop.getState().setFrame(null)
+  }, [renderReady, plainMode, pathname, isStreaming, homeMode, settings.backdropEnabled])
 
   // Preload-Chunks fwd to Worker-Port
   useEffect(() => {
     const handleVideo = (packet: any) => {
-      if (!renderReady) return
+      const fullPacket = reassembleVideoPacket(packet, pendingVideoChunksRef.current)
+      if (!fullPacket) return
 
-      const { chunk } = packet
-      const transfer = chunk.buffer
+      const transfer = chunkTransferBuffer(fullPacket.chunk)
+      if (!transfer) return
+      const sentAt =
+        typeof fullPacket.sentAt === 'number' && Number.isFinite(fullPacket.sentAt)
+          ? fullPacket.sentAt
+          : Date.now()
 
-      videoChannel.port1.postMessage(transfer, [transfer])
+      videoChannel.port1.postMessage(
+        {
+          buffer: transfer,
+          sentAt
+        },
+        [transfer]
+      )
     }
 
     window.carplay.ipc.onVideoChunk(handleVideo)
 
-    return () => {}
-  }, [videoChannel, renderReady])
+    return () => window.carplay.ipc.offVideoChunk?.(handleVideo)
+  }, [videoChannel])
 
   useEffect(() => {
-    const handleAudio = (chunk: any) => {
-      if (chunk && chunk.chunk && chunk.chunk.buffer) {
+    const handleAudio = (packet: ChunkPacket) => {
+      const transfer = chunkTransferBuffer(packet?.chunk)
+      if (transfer) {
+        const { chunk: _chunk, ...meta } = packet
         micChannel.port2.postMessage(
           {
+            ...meta,
             type: 'audio',
-            buffer: chunk.chunk.buffer,
-            ...chunk
+            buffer: transfer,
           },
-          [chunk.chunk.buffer]
+          [transfer]
         )
       }
     }
 
     window.carplay.ipc.onAudioChunk(handleAudio)
 
-    return () => {}
+    return () => window.carplay.ipc.offAudioChunk?.(handleAudio)
   }, [micChannel])
-
-  // Start CarPlay-Service
-  useEffect(() => {
-    ;(async () => {
-      try {
-        await window.carplay.ipc.start()
-      } catch (err) {
-        console.error('CarPlay start failed:', err)
-      }
-    })()
-  }, [])
 
   // Audio- and Touch-Hooks
   const { processAudio, getAudioPlayer } = useCarplayAudio(carplayWorker)
 
-  const sendTouchEvent = useCarplayTouch()
-
-  const clearRetryTimeout = useCallback(() => {
-    if (retryTimeoutRef.current) {
-      clearTimeout(retryTimeoutRef.current)
-      retryTimeoutRef.current = null
-    }
-  }, [])
+  const sendTouchEvent = useCarplayTouch(pointerCaptureTouch)
 
   // Carplay Worker messages
   useEffect(() => {
@@ -225,6 +334,7 @@ const Carplay: React.FC<CarplayProps> = ({
           setDongleConnected(true)
           break
         case 'unplugged':
+          pendingVideoChunksRef.current.clear()
           hasStartedRef.current = false
           setDongleConnected(false)
           setStreaming(false)
@@ -232,11 +342,9 @@ const Carplay: React.FC<CarplayProps> = ({
           resetInfo()
           break
         case 'requestBuffer':
-          clearRetryTimeout()
           getAudioPlayer(message)
           break
         case 'audio':
-          clearRetryTimeout()
           processAudio({
             ...message,
             command: audioCommandRef.current
@@ -251,7 +359,7 @@ const Carplay: React.FC<CarplayProps> = ({
           break
         case 'command': {
           const val = (message as any).value
-          if (val === CommandMapping.requestHostUI) navigate('/settings')
+          if (!plainMode && val === CommandMapping.requestHostUI) navigate('/settings')
           break
         }
         case 'dongleInfo':
@@ -264,10 +372,18 @@ const Carplay: React.FC<CarplayProps> = ({
           hasStartedRef.current = true
           break
         case 'failure':
+          pendingVideoChunksRef.current.clear()
           hasStartedRef.current = false
-          if (!retryTimeoutRef.current) {
-            retryTimeoutRef.current = setTimeout(() => window.location.reload(), RETRY_DELAY_MS)
-          }
+          setStreaming(false)
+          setReceivingVideo(false)
+          resetInfo()
+          break
+        case 'phone-unplugged':
+          pendingVideoChunksRef.current.clear()
+          setDongleConnected(true)
+          setStreaming(false)
+          setReceivingVideo(false)
+          resetInfo()
           break
       }
     }
@@ -275,10 +391,10 @@ const Carplay: React.FC<CarplayProps> = ({
     return () => carplayWorker.removeEventListener('message', handler)
   }, [
     carplayWorker,
-    clearRetryTimeout,
     getAudioPlayer,
     processAudio,
     navigate,
+    plainMode,
     setDeviceInfo,
     setNegotiatedResolution,
     setAudioInfo,
@@ -296,11 +412,10 @@ const Carplay: React.FC<CarplayProps> = ({
         resetInfo()
         setDongleConnected(true)
         hasStartedRef.current = true
-        await window.carplay.ipc.start()
       }
     }
     const onUsbDisconnect = async () => {
-      clearRetryTimeout()
+      pendingVideoChunksRef.current.clear()
       setReceivingVideo(false)
       setStreaming(false)
       setDongleConnected(false)
@@ -324,9 +439,9 @@ const Carplay: React.FC<CarplayProps> = ({
     })()
 
     return () => {
-      window.electron?.ipcRenderer.removeListener('usb-event', usbHandler)
+      window.carplay.usb.unlistenForEvents?.(usbHandler)
     }
-  }, [setReceivingVideo, setDongleConnected, setStreaming, clearRetryTimeout, navigate, resetInfo])
+  }, [setReceivingVideo, setDongleConnected, setStreaming, navigate, resetInfo])
 
   // Settings-Events
   useEffect(() => {
@@ -361,22 +476,32 @@ const Carplay: React.FC<CarplayProps> = ({
           useStatusStore.setState({ isDongleConnected: true })
           break
         case 'unplugged':
+          pendingVideoChunksRef.current.clear()
           useStatusStore.setState({
             isDongleConnected: false,
             isStreaming: false
           })
           useCarplayStore.getState().resetInfo()
           break
+        case 'phone-unplugged':
+          pendingVideoChunksRef.current.clear()
+          useStatusStore.setState({
+            isDongleConnected: true,
+            isStreaming: false
+          })
+          setReceivingVideo(false)
+          useCarplayStore.getState().resetInfo()
+          break
         case 'command':
-          if (data.message?.value === CommandMapping.requestHostUI) navigate('/settings')
+          if (!plainMode && data.message?.value === CommandMapping.requestHostUI) navigate('/settings')
           break
       }
     }
     window.carplay.ipc.onEvent(handler)
     return () => {
-      window.electron?.ipcRenderer.removeListener('carplay-event', handler)
+      window.carplay.ipc.offEvent?.(handler)
     }
-  }, [navigate])
+  }, [navigate, plainMode])
 
   // Resize Observer
   useEffect(() => {
@@ -411,7 +536,7 @@ const Carplay: React.FC<CarplayProps> = ({
       ref={mainElem}
       className="App"
       style={
-        pathname === '/'
+        plainMode || pathname === '/'
           ? { height: '100%', width: '100%', touchAction: 'none' }
           : { display: 'none' }
       }
@@ -480,10 +605,10 @@ const Carplay: React.FC<CarplayProps> = ({
           padding: 0,
           margin: 0,
           display: 'flex',
-          // Round off CarPlay's baked-in black corners so the blurred backdrop
-          // shows through them instead of black notches against the glow.
-          borderRadius: receivingVideo ? 36 : 0,
-          overflow: 'hidden',
+          // Keep the live canvas flat/unclipped. Rounded clipping here was the
+          // main source of CarPlay touch latency on the Pi compositor path.
+          borderRadius: roundedClipMode ? 36 : 0,
+          overflow: roundedClipMode ? 'hidden' : 'visible',
           visibility: receivingVideo ? 'visible' : 'hidden',
           zIndex: receivingVideo ? 1 : -1
         }}
@@ -494,9 +619,6 @@ const Carplay: React.FC<CarplayProps> = ({
           style={{
             width: receivingVideo ? '100%' : '0',
             height: receivingVideo ? '100%' : '0',
-            // overscan ~1% so the sub-pixel centering seam on the left/top edge
-            // is covered (cropped under overflow:hidden)
-            transform: receivingVideo ? 'scale(1.01)' : undefined,
           }}
         />
       </div>

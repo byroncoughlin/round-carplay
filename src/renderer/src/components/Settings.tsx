@@ -1,4 +1,4 @@
-import { ExtraConfig } from "../../../main/Globals"
+import type { ExtraConfig } from "../../../main/Globals"
 import React, { useEffect, useMemo, useState } from "react"
 import {
   Box,
@@ -25,12 +25,21 @@ import { TransitionProps } from '@mui/material/transitions'
 import { KeyBindings } from "./KeyBindings"
 import { useCarplayStore, useStatusStore } from "../store/store"
 import { useDataLog } from "../store/dataLog"
-import { updateCameras as detectCameras } from '../utils/cameraDetection'
 import debounce from 'lodash.debounce'
 
 interface SettingsProps {
   settings: ExtraConfig | null
 }
+
+const DEFAULT_AMBIENT_FILL_COLOR = '#142321'
+const AMBIENT_FILL_SWATCHES = [
+  '#142321',
+  '#083f38',
+  '#1f2f44',
+  '#2f2438',
+  '#382716',
+  '#202020',
+]
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & { children: React.ReactElement },
@@ -50,11 +59,15 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
 
   const [activeSettings, setActiveSettings] = useState<ExtraConfig>({
     ...settings,
+    kiosk: true,
+    nightMode: true,
+    audioTransferMode: true,
+    micType: 'os',
+    microphone: '',
     audioVolume: settings.audioVolume ?? 1.0,
     navVolume: settings.navVolume ?? 1.0,
+    ambientFillColor: settings.ambientFillColor ?? DEFAULT_AMBIENT_FILL_COLOR,
   })
-  const [micLabel, setMicLabel] = useState('no device')
-  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
   const [openBindings, setOpenBindings] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [resetMessage, setResetMessage] = useState("")
@@ -64,7 +77,6 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
 
   const saveSettings = useCarplayStore(s => s.saveSettings)
   const isDongleConnected = useStatusStore(s => s.isDongleConnected)
-  const setCameraFound = useStatusStore(s => s.setCameraFound)
   const showDiagnostics = useStatusStore(s => s.showDiagnostics)
   const setShowDiagnostics = useStatusStore(s => s.setShowDiagnostics)
   const clearAllLog = useDataLog(s => s.clearAll)
@@ -74,11 +86,25 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
   useEffect(() => () => debouncedSave.cancel(), [debouncedSave])
 
   const requiresRestartParams: (keyof ExtraConfig)[] = [
-    'width', 'height', 'fps', 'dpi', 'format', 'mediaDelay', 'phoneWorkMode', 'wifiType', 'micType', 'audioTransferMode'
+    'width', 'height', 'fps', 'dpi', 'format', 'mediaDelay', 'phoneWorkMode', 'wifiType'
   ]
 
+  const withFixedSettings = (s: ExtraConfig): ExtraConfig => ({
+    ...s,
+    kiosk: true,
+    nightMode: true,
+    audioTransferMode: true,
+    micType: 'os',
+    microphone: '',
+  })
+
   const settingsChange = (key: keyof ExtraConfig, value: any) => {
-    const updated = { ...activeSettings, [key]: value }
+    const updated = withFixedSettings({ ...activeSettings, [key]: value })
+    if (key === 'backdropEnabled' && value === true) {
+      updated.ambientFillEnabled = false
+    } else if (key === 'ambientFillEnabled' && value === true) {
+      updated.backdropEnabled = false
+    }
     setActiveSettings(updated)
     if (['audioVolume', 'navVolume'].includes(key)) {
       debouncedSave(updated)
@@ -116,16 +142,23 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
     setCloseCountdown(3)
     let msg = ""
     try {
+      setResetMessage("Saving...")
+      const fixed = withFixedSettings(activeSettings)
+      setActiveSettings(fixed)
+      await saveSettings(fixed)
       if (isDongleConnected) {
         setResetMessage("Resetting...")
         const ok = await window.carplay.usb.forceReset()
-        msg = ok ? "Success" : "Failed"
+        msg = ok ? "Saved" : "Saved, reset failed"
       } else { msg = "Saved" }
-    } catch { msg = "Error" }
-    await saveSettings(activeSettings)
-    setHasChanges(false)
-    setIsResetting(false)
-    setResetMessage(msg)
+      setHasChanges(false)
+    } catch (err) {
+      console.error('[Settings] Save failed', err)
+      msg = "Error"
+    } finally {
+      setIsResetting(false)
+      setResetMessage(msg)
+    }
   }
 
   useEffect(() => {
@@ -138,32 +171,6 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
     }, 1000)
     return () => clearInterval(t)
   }, [resetMessage])
-
-  useEffect(() => {
-    const updateMic = async () => {
-      try {
-        const label = await window.carplay.usb.getSysdefaultPrettyName()
-        const final = label && !['sysdefault', 'null'].includes(label) ? label : 'no device'
-        setMicLabel(final)
-        if (!activeSettings.microphone && final !== 'no device') {
-          const upd = { ...activeSettings, microphone: 'sysdefault' }
-          setActiveSettings(upd); debouncedSave(upd)
-        }
-      } catch { }
-    }
-    updateMic()
-    window.carplay.usb.listenForEvents((_: any, d: { type: string }) => {
-      if (['attach','plugged','detach','unplugged'].includes(d.type)) updateMic()
-    })
-  }, [])
-
-  useEffect(() => {
-    detectCameras(setCameraFound, saveSettings, activeSettings).then(setCameras)
-    window.carplay.usb.listenForEvents((_: any, d: { type: string }) => {
-      if (['attach','plugged','detach','unplugged'].includes(d.type))
-        detectCameras(setCameraFound, saveSettings, activeSettings).then(setCameras)
-    })
-  }, [])
 
   const numField = (label: string, key: keyof ExtraConfig, min?: number) => (
     <Grid size={{ xs: 3 }} key={String(key)}>
@@ -183,7 +190,7 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
       p={1.5} display="flex" flexDirection="column" height="100%"
       sx={{ boxSizing: 'border-box' }}
     >
-      <Box sx={{ overflowY: 'auto', flexGrow: 1 }}>
+      <Box sx={{ overflowY: 'auto', flex: '0 1 auto', minHeight: 0 }}>
 
         {/* ── VIDEO ── */}
         <Grid container spacing={1} sx={{ pt: 1 }}>
@@ -224,10 +231,9 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
         {/* ── TOGGLES — all horizontal ── */}
         <Stack direction="row" flexWrap="wrap" sx={{ mx: -0.5 }}>
           {[
-            { label: 'KIOSK',       key: 'kiosk',             val: activeSettings.kiosk },
-            { label: 'DARK MODE',   key: 'nightMode',          val: activeSettings.nightMode },
-            { label: 'NO AUDIO',    key: 'audioTransferMode',  val: activeSettings.audioTransferMode },
-            { label: 'BACKDROP',    key: 'backdropEnabled',    val: activeSettings.backdropEnabled !== false },
+            { label: 'BACKDROP',    key: 'backdropEnabled',    val: activeSettings.backdropEnabled === true },
+            { label: 'AMBIENT FILL', key: 'ambientFillEnabled', val: activeSettings.ambientFillEnabled === true },
+            { label: 'ROUND CORNERS', key: 'diagnosticRoundedCarplayClip', val: activeSettings.diagnosticRoundedCarplayClip === true },
             { label: 'SAMPLE DATA', key: null,                 val: showDiagnostics },
           ].map(({ label, key, val }) => (
             <FormControlLabel key={label}
@@ -243,24 +249,42 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
           ))}
         </Stack>
 
+        <Box sx={{ px: 0.5, mt: 0.25 }}>
+          <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>FILL COLOR</FormLabel>
+          <Stack direction="row" gap={0.75} sx={{ mt: 0.5 }}>
+            {AMBIENT_FILL_SWATCHES.map(color => (
+              <Button
+                key={color}
+                size="small"
+                variant="outlined"
+                onClick={() => settingsChange('ambientFillColor', color)}
+                sx={{
+                  width: 28,
+                  minWidth: 28,
+                  height: 28,
+                  p: 0,
+                  backgroundColor: color,
+                  borderColor:
+                    (activeSettings.ambientFillColor ?? DEFAULT_AMBIENT_FILL_COLOR).toLowerCase() === color
+                      ? 'rgba(255,255,255,0.9)'
+                      : 'rgba(255,255,255,0.22)',
+                  '&:hover': { backgroundColor: color, borderColor: 'rgba(255,255,255,0.9)' },
+                }}
+              />
+            ))}
+          </Stack>
+        </Box>
+
         <Rule />
 
-        {/* ── CONNECTIVITY — wifi + mic side by side ── */}
+        {/* ── CONNECTIVITY ── */}
         <Grid container spacing={1} sx={{ px: 0.5 }}>
-          <Grid size={{ xs: 5 }}>
+          <Grid size={{ xs: 12 }}>
             <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>WIFI</FormLabel>
             <RadioGroup row value={activeSettings.wifiType}
               onChange={e => settingsChange('wifiType', e.target.value)}>
               <FormControlLabel value="2.4ghz" control={<Radio size="small" />} label={cap('2.4G')} />
               <FormControlLabel value="5ghz"   control={<Radio size="small" />} label={cap('5G')} />
-            </RadioGroup>
-          </Grid>
-          <Grid size={{ xs: 7 }}>
-            <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>MICROPHONE</FormLabel>
-            <RadioGroup row value={activeSettings.micType}
-              onChange={e => settingsChange('micType', e.target.value)}>
-              <FormControlLabel value="os"  control={<Radio size="small" />} label={cap(`OS: ${micLabel}`)} sx={{ mr: 1 }} />
-              <FormControlLabel value="box" control={<Radio size="small" />} label={cap('BOX')} />
             </RadioGroup>
           </Grid>
         </Grid>
@@ -279,21 +303,6 @@ const Settings: React.FC<SettingsProps> = ({ settings }) => {
         <Typography sx={{ fontSize: 9, opacity: 0.55, mt: 0.25 }}>
           Hold the bike upright &amp; level, then tap SET LEVEL to zero the lean/pitch readout.
         </Typography>
-
-        {/* ── CAMERA (if present) ── */}
-        {cameras.length > 0 && (
-          <>
-            <Rule />
-            <FormLabel sx={{ fontSize: 10, letterSpacing: 1 }}>CAMERA</FormLabel>
-            <RadioGroup row value={activeSettings.camera}
-              onChange={e => settingsChange('camera', e.target.value)}>
-              {cameras.map(cam => (
-                <FormControlLabel key={cam.deviceId} value={cam.deviceId}
-                  control={<Radio size="small" />} label={cap(cam.label || 'Camera')} />
-              ))}
-            </RadioGroup>
-          </>
-        )}
 
       </Box>
 

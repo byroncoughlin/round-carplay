@@ -227,7 +227,9 @@ export class AudioData extends Message {
     } else if (amount === 4) {
       this.volumeDuration = data.readFloatLE(12)
     } else {
-      this.data = new Int16Array(data.buffer, 12)
+      const pcm = data.subarray(12, 12 + amount - (amount % 2))
+      const exact = pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength)
+      this.data = new Int16Array(exact)
     }
   }
 }
@@ -238,10 +240,12 @@ export class VideoData extends Message {
   flags: number
   length: number
   unknown: number
+  rawData: Buffer
   data: Buffer
 
   constructor(header: MessageHeader, data: Buffer) {
     super(header)
+    this.rawData = data
     this.width = data.readUInt32LE(0)
     this.height = data.readUInt32LE(4)
     this.flags = data.readUInt32LE(8)

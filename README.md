@@ -7,10 +7,17 @@
 
 # motoCarPlay
 
-**A round-display Apple CarPlay dashboard with live motorcycle instrumentation, built for a 1976 BMW R75/6.**
+**A round-display Apple CarPlay dashboard with live motorcycle instrumentation, built for a 1975 BMW R75/6.**
 
 **▶ Try the live browser demo → [byronthegreat.com/projects/motocarplay](https://byronthegreat.com/projects/motocarplay/)**
 _(the dashboard UI running in your browser, driven by a simulated ride; the center CarPlay screen is a static screenshot)_
+
+> **Current version:** this repo is the original motoCarPlay prototype/proof of concept.
+> I have since ported and rebuilt the project on
+> [LIVI](https://github.com/byroncoughlin/LIVI), which is the more modern,
+> stable, hardware-accelerated Raspberry Pi version. The LIVI fork keeps the
+> round motorcycle dash, sensor overlays, graphing, and backdrop idea, but moves
+> CarPlay rendering onto LIVI's native GStreamer/Linux compositor foundation.
 
 CarPlay runs in a centered square on an 800×800 round screen. The curved space
 around it shows sensor data read straight off the bike: cylinder-head temps,

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="initial-scale=1, width=device-width" />
     <meta name="theme-color" content="#0a0a0b" />
-    <title>motoCarPlay on LIVI — hardware-accelerated round CarPlay dashboard for a BMW R75/6</title>
+    <title>motoCarPlay on LIVI: a round CarPlay dashboard for a 1975 BMW R75/6</title>
     <meta
       name="description"
       content="motoCarPlay on LIVI: a hardware-accelerated Raspberry Pi 5 CarPlay dashboard for a 1975 BMW R75/6, with live motorcycle sensor overlays, graphs, and a blurred CarPlay backdrop. Includes an interactive browser demo driven by a simulated ride."
@@ -334,7 +334,7 @@
     <!-- hero: the real demo, right up front -->
     <section class="hero">
       <h1>motoCarPlay</h1>
-      <p class="tag">A round-display CarPlay dashboard for my 1975 BMW R75/6, now rebuilt on LIVI for a more stable, hardware-accelerated Raspberry Pi install. This browser demo runs the dashboard UI on a simulated ride.</p>
+      <p class="tag">A round-display CarPlay dashboard for my 1975 BMW R75/6. It runs on a Raspberry Pi 5, rebuilt on LIVI for hardware-accelerated video. The demo below is the real UI on a simulated ride.</p>
       <div class="fit hero-fit">
         <div class="bezel hero-bezel">
           <iframe src="./demo.html" title="motoCarPlay live dashboard demo" scrolling="no"></iframe>
@@ -416,28 +416,28 @@
           <div class="card">
             <p class="kicker">The problem</p>
             <h2>A phone screen did not belong here</h2>
-            <p>The R75/6 is all round glass, needles, heat, and vibration. Dropping a modern rectangle onto it would have solved navigation while making the cockpit feel less like the bike.</p>
-            <p>So the project started with a stricter rule: CarPlay could be useful, but the motorcycle still had to be the main character.</p>
-            <div class="shout">The first door opened through <a href="https://github.com/f-io/pi-carplay" target="_blank" rel="noopener">f-io / pi-carplay</a>, which proved a Raspberry Pi and Carlinkit adapter could host CarPlay at all.</div>
+            <p>The R75/6 is round glass, needles, heat, and vibration. A flat rectangle bolted to the dash would fix navigation and wreck the look of the cockpit.</p>
+            <p>So I set one rule. CarPlay had to fit the bike, not take it over.</p>
+            <div class="shout"><a href="https://github.com/f-io/pi-carplay" target="_blank" rel="noopener">f-io / pi-carplay</a> got it started. It proved a Raspberry Pi and a Carlinkit adapter can run CarPlay.</div>
           </div>
         </section>
 
         <section class="step left" data-act="2">
           <div class="card">
             <p class="kicker">The circle</p>
-            <h2>Make the rectangle earn its place</h2>
-            <p>The first motoCarPlay build grew from <a href="https://github.com/OneMakerShow/round-carplay" target="_blank" rel="noopener">OneMakerShow / round-carplay</a>. The trick was simple and annoying: put CarPlay in the biggest square that fits inside an 800×800 round display.</p>
-            <p>That leaves four curved pockets. I stopped treating them like wasted pixels and turned them into the instrument cluster: speed, heading, heat, lean, altitude, and outside air.</p>
-            <div class="shout">That prototype is still the browser demo here. It proved the composition before the hardware build caught up.</div>
+            <h2>Fit CarPlay inside a circle</h2>
+            <p>The first motoCarPlay build came from <a href="https://github.com/OneMakerShow/round-carplay" target="_blank" rel="noopener">OneMakerShow / round-carplay</a>. The idea is simple: put CarPlay in the largest square that fits an 800×800 round screen.</p>
+            <p>That leaves four curved corners. Instead of wasting them, I turned them into the gauges: speed, heading, cylinder heat, lean, altitude, and air temp.</p>
+            <div class="shout">That prototype is the demo on this page. It nailed the layout before the hardware was ready.</div>
           </div>
         </section>
 
         <section class="step right" data-act="3">
           <div class="card">
             <p class="kicker">The rebuild</p>
-            <h2>The prototype needed a real engine</h2>
-            <p>The round layout worked, but the Pi deserved a stronger foundation than a clever demo shell. I ported the idea into <a href="https://github.com/byroncoughlin/LIVI" target="_blank" rel="noopener">LIVI</a> so the display stack could be native, stable, and Pi-aware.</p>
-            <p>LIVI brings the grown-up parts: GStreamer video, hardware decode, an embedded compositor, and a cleaner head-unit architecture. Same motorcycle idea; much better machinery underneath.</p>
+            <h2>From demo shell to a real stack</h2>
+            <p>The layout worked, but the Pi needed more than a demo shell. I moved it onto <a href="https://github.com/byroncoughlin/LIVI" target="_blank" rel="noopener">LIVI</a> for a native, stable display stack.</p>
+            <p>LIVI adds GStreamer video, hardware decode, an embedded compositor, and a cleaner head-unit design. Same idea, better plumbing.</p>
             <div class="spec"><a href="https://github.com/f-io/LIVI" target="_blank" rel="noopener">f-io / LIVI</a><a href="https://github.com/byroncoughlin/LIVI" target="_blank" rel="noopener">Byron's LIVI fork</a></div>
           </div>
         </section>
@@ -445,9 +445,9 @@
         <section class="step left" data-act="4">
           <div class="card">
             <p class="kicker">No data bus</p>
-            <h2>The bike had to learn a language</h2>
-            <p>There is no OBD port hiding on a 1975 airhead. Every live number has to come from hardware I added, translated by the Pi, and placed where an old gauge would make sense.</p>
-            <p>GPS became the first translator: speed, heading, and altitude without touching the wheel, gearbox, or cable drive.</p>
+            <h2>Old bike, no data port</h2>
+            <p>A 1975 airhead has no OBD port. Every number on screen comes from a sensor I added, read by the Pi, and placed where an old gauge would sit.</p>
+            <p>GPS came first. It gives speed, heading, and altitude without touching a wheel, the gearbox, or a cable.</p>
             <div class="spec"><a href="https://www.adafruit.com/product/4279" target="_blank" rel="noopener">Adafruit Ultimate GPS</a><a href="https://en.wikipedia.org/wiki/Global_Positioning_System" target="_blank" rel="noopener">speed · heading · altitude</a></div>
           </div>
         </section>
@@ -455,9 +455,9 @@
         <section class="step right" data-act="5">
           <div class="card">
             <p class="kicker">Air · silicon</p>
-            <h2>Measure the weather and the box</h2>
-            <p>A waterproof probe reads the air moving around the bike. The Pi reports its own CPU temperature from inside the enclosure.</p>
-            <p>That pairing matters: one number tells you the ride, the other tells you whether the little computer buried in the dash is staying comfortable.</p>
+            <h2>Outside air, and the Pi itself</h2>
+            <p>A waterproof probe reads the outside air. The Pi reports its own CPU temperature from inside the case.</p>
+            <p>One number's about the ride. The other tells me whether the computer buried in the dash is cooking.</p>
             <div class="spec"><a href="https://www.amazon.com/s?k=DS18B20+waterproof+temperature+probe" target="_blank" rel="noopener">DS18B20 probe</a><span>Pi CPU temp</span></div>
           </div>
         </section>
@@ -466,8 +466,8 @@
           <div class="card">
             <p class="kicker">Airhead heat</p>
             <h2>Watch both cylinders breathe</h2>
-            <p>On this engine, cooling is wind over fins. A K-type thermocouple under each spark plug reads the left and right cylinder heads where heat actually matters.</p>
-            <p>The gauges move from cold blue to running amber to too-hot red, so the engine's mood is readable before the number is.</p>
+            <p>This engine is air-cooled, just wind over the fins. A K-type thermocouple under each spark plug reads the left and right heads, where the heat actually matters.</p>
+            <p>The gauges go blue when cold, amber when warm, red when too hot. You read the color before the number.</p>
             <p>Each probe has its own amplifier and shares an SPI bus back to the Pi.</p>
             <div class="spec"><a href="https://www.adafruit.com/product/3263" target="_blank" rel="noopener">2× MAX31856</a><a href="https://www.amazon.com/s?k=K-type+thermocouple+14mm+spark+plug+temperature+probe" target="_blank" rel="noopener">K-type probe · 14 mm</a></div>
           </div>
@@ -477,8 +477,8 @@
           <div class="card">
             <p class="kicker">Motion · IMU</p>
             <h2>The dash should lean with the ride</h2>
-            <p>A 9-axis sensor tracks lean angle, pitch, and G-force in real time. In a corner, the display stops pretending the world is flat.</p>
-            <p>It is not trying to be a race dash. It is a small bit of truth about what the motorcycle is doing underneath you.</p>
+            <p>A 9-axis sensor tracks lean, pitch, and G-force live. Lean into a corner and the display leans with you.</p>
+            <p>It's not a race dash. It just shows what the bike's actually doing.</p>
             <div class="spec"><a href="https://www.adafruit.com/product/2472" target="_blank" rel="noopener">BNO055 9-DOF</a><a href="https://en.wikipedia.org/wiki/Inertial_measurement_unit" target="_blank" rel="noopener">lean · pitch · G</a></div>
           </div>
         </section>
@@ -486,9 +486,9 @@
         <section class="step left" data-act="8">
           <div class="card">
             <p class="kicker">Memory</p>
-            <h2>Tap a gauge, see the ride unfold</h2>
-            <p>The live view is only half the story. Every reading is logged while the app runs, so a tap opens the recent ride as a graph with the current value, min/max, and trace.</p>
-            <p>Thermal graphs get color bands underneath the line, turning heat into a visible pattern instead of a number you have to babysit.</p>
+            <h2>Tap a gauge for the history</h2>
+            <p>The live readout is only half of it. Every value is logged while the app runs, so a tap opens a graph with the current reading, min and max, and the recent trace.</p>
+            <p>Temperature graphs add color bands behind the line, so a hot trend is something you see instead of a number you babysit.</p>
             <div class="spec"><a href="https://github.com/byroncoughlin/LIVI#readme" target="_blank" rel="noopener">data logging</a><a href="https://github.com/byroncoughlin/LIVI#readme" target="_blank" rel="noopener">risk bands</a></div>
           </div>
         </section>
@@ -497,8 +497,8 @@
           <div class="card">
             <p class="kicker">The disguise</p>
             <h2>Let CarPlay color the whole gauge</h2>
-            <p>The last visual problem was the square itself. Black corners made CarPlay feel like a screen floating inside a hole.</p>
-            <p>The optional backdrop samples the live frame, enlarges it, blurs it, and lets that color spill into the round edges. The square is still there, but your eye stops arguing with it.</p>
+            <p>The last problem was the square. Black corners made CarPlay look like a screen dropped into a hole.</p>
+            <p>An optional backdrop samples the live frame, scales it up, blurs it, and bleeds that color into the round edges. The square's still there, it just stops fighting the circle.</p>
             <div class="spec"><a href="https://github.com/byroncoughlin/LIVI#readme" target="_blank" rel="noopener">ambient backdrop</a><a href="https://en.wikipedia.org/wiki/Letterboxing_(filming)" target="_blank" rel="noopener">letterbox blur</a></div>
           </div>
         </section>
@@ -506,9 +506,9 @@
         <section class="step left" data-act="10">
           <div class="card">
             <p class="kicker">Where it landed</p>
-            <h2>The ride-forward version is LIVI</h2>
-            <p>This page is the story and simulation. The code I am carrying forward is the LIVI fork: hardware-accelerated video on the Pi, clean mode restarts, rounded CarPlay corners, and backdrop as an opt-in effect.</p>
-            <p>The credits stay visible because this project is a relay. pi-carplay opened the door, round-carplay shaped the display, LIVI made the Pi build feel real, and motoCarPlay became my motorcycle's version of it.</p>
+            <h2>What I run now is LIVI</h2>
+            <p>This page is the story and the simulation. The code I run on the bike is the LIVI fork: hardware-accelerated video, clean mode switches, rounded CarPlay corners, and the backdrop as an opt-in.</p>
+            <p>This was a relay, so the credits stay up. pi-carplay opened the door, round-carplay shaped the display, and LIVI made the Pi build solid. motoCarPlay is my bike's version of all of it.</p>
             <div class="spec"><a href="https://github.com/byroncoughlin/LIVI" target="_blank" rel="noopener">current LIVI repo</a><a href="https://github.com/byroncoughlin/round-carplay" target="_blank" rel="noopener">original prototype</a></div>
           </div>
         </section>
@@ -518,7 +518,7 @@
     <!-- finale: the real demo again -->
     <section class="finale" id="demo">
       <h2>That's the build so far</h2>
-      <p class="tag">Here is the dashboard demo again. Tap any gauge to open its graph; the current Pi app lives in the LIVI fork.</p>
+      <p class="tag">Here's the demo again. Tap any gauge for its graph. The current Pi app lives in the LIVI fork.</p>
       <div class="fit foot-fit">
         <div class="bezel foot-bezel">
           <iframe src="./demo.html" title="motoCarPlay live dashboard demo" scrolling="no" loading="lazy"></iframe>

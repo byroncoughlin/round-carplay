@@ -21,6 +21,10 @@ const SETTINGS = {
   // ExtraConfig extras
   kiosk: true, camera: '', microphone: '', audioVolume: 1, navVolume: 0.5,
   leanOffset: 0, pitchOffset: 0, backdropEnabled: true,
+  // The Pi keeps the center square unclipped for video-compositor performance.
+  // The demo has no live video, so round the square (gives graphs rounded
+  // corners to match the original prototype). Pi config is unaffected.
+  diagnosticRoundedCarplayClip: true,
   bindings: {
     up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight',
     selectUp: 'KeyB', selectDown: 'Space', back: 'Backspace', home: 'KeyH',
